@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "925262947453",
+    "project_id": "daily-calo",
+    "storage_bucket": "daily-calo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:925262947453:android:bbaf9c1c996a3a2f08bd14",
+        "android_client_info": {
+          "package_name": "com.example.daily_calo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC69fF-z02AO-awUeMWJTtRd60VgSTOJLo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
