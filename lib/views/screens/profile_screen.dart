@@ -8,7 +8,7 @@ class ProfileScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          "Profile"
+          "Thông tin và cài đặt"
         ),
       ),
     );

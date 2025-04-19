@@ -16,9 +16,9 @@ class AppRoutes{
   static const String manageExercise = '/exercise/management';
   
   //Profile
-  static const String prolfie = '/prolfie';
-  static const String changePassword = '/prolfie/changePassword';
-  static const String changeInfo = '/prolfie/changeInfo';
+  static const String profile = '/profile';
+  static const String changePassword = '/profile/changePassword';
+  static const String changeInfo = '/profile/changeInfo';
   
 
 }

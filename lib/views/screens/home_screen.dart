@@ -17,14 +17,12 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
   void dispose() {
-    // TODO: implement dispose
     _tabController.dispose();
     super.dispose();
   }
@@ -32,10 +30,10 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Home")),
       body: TabBarView(
         controller: _tabController,
-        children: [
+        children: const [
+          HomeScreenContent(),
           MealScreen(),
           ExerciseScreen(),
           ProfileScreen(),
@@ -49,12 +47,38 @@ class _HomeScreenState extends State<HomeScreen>
             _tabController.animateTo(index);
           });
         },
-        items: [
-          const BottomNavigationBarItem(icon: Icon(Icons.dining_outlined)),
-          const BottomNavigationBarItem(icon: Icon(Icons.healing_outlined)),
-          const BottomNavigationBarItem(icon: Icon(Icons.person_outline)),
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            label: "Trang chủ",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dining_outlined),
+            label: "Bữa ăn",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.healing_outlined),
+            label: "Tập luyện",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: "Thông tin",
+          ),
         ],
       ),
+    );
+  }
+}
+
+// New widget for Home tab content
+class HomeScreenContent extends StatelessWidget {
+  const HomeScreenContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Trang chủ")),
+      body: Center(child: Text("Trang chủ", style: TextStyle(fontSize: 24))),
     );
   }
 }
