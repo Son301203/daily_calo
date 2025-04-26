@@ -1,40 +1,40 @@
 class FormValidator {
   static String? validateEmail(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Email is required';
+      return 'Email là bắt buộc';
     }
     if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-      return 'Please enter a valid email';
+      return 'Hãy nhập email hợp lệ';
     }
     return null;
   }
 
   static String? validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Password is required';
+      return 'Mật khẩu là bắt buộc';
     }
     if (value.length < 6) {
-      return 'Password must be at least 6 characters';
+      return 'Mật khẩu cần ít nhất 6 ký tự';
     }
     return null;
   }
 
   static String? validateFullName(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Full name is required';
+      return 'Yêu cầu nhập đầy đủ tên';
     }
     if (value.length < 3) {
-      return 'Full name must be at least 3 characters';
+      return 'Tên đầy đủ cần ít nhất 3 ký tự';
     }
     return null;
   }
 
   static String? validateConfirmPassword(String? value, String password) {
     if (value == null || value.isEmpty) {
-      return 'Confirm password is required';
+      return 'Mật khẩu xác nhận là bắt buộc';
     }
     if (value != password) {
-      return 'Passwords do not match';
+      return 'Mật khẩu không trùng khớp';
     }
     return null;
   }
