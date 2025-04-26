@@ -14,4 +14,6 @@ class AppColors {
   // // Text Theme Colors
   static const Color lightText = Color (0xFF000000);
   static const Color lightTextSecondary = Color(0xFF666666);
+  static const Color whiteText = Color.fromARGB(255, 255, 255, 255);
+
 }
