@@ -1,16 +1,17 @@
+import 'package:daily_calo/models/meal.dart';
 import 'package:daily_calo/utils/app_color.dart';
 import 'package:flutter/material.dart';
 
 class MealDetailScreen extends StatelessWidget {
-  final Map<String, dynamic> dish;
+  final Meal meal;
 
-  const MealDetailScreen({super.key, required this.dish});
+  const MealDetailScreen({super.key, required this.meal});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(dish['name'], style: TextStyle(color: AppColors.whiteText)),
+        title: Text(meal.title, style: TextStyle(color: AppColors.whiteText)),
         backgroundColor: AppColors.primary,
       ),
       body: SingleChildScrollView(
@@ -39,7 +40,7 @@ class MealDetailScreen extends StatelessWidget {
                     ),
                   ),
                   subtitle: Text(
-                    dish['name'],
+                    meal.title,
                     style: TextStyle(color: AppColors.lightTextSecondary),
                   ),
                 ),
@@ -55,7 +56,7 @@ class MealDetailScreen extends StatelessWidget {
                     ),
                   ),
                   subtitle: Text(
-                    '${dish['serving_size']} g',
+                    '${meal.servingSize} g',
                     style: TextStyle(color: AppColors.lightTextSecondary),
                   ),
                 ),
@@ -71,7 +72,7 @@ class MealDetailScreen extends StatelessWidget {
                     ),
                   ),
                   subtitle: Text(
-                    '${dish['protein']} g',
+                    '${meal.protein} g',
                     style: TextStyle(color: AppColors.lightTextSecondary),
                   ),
                 ),
@@ -87,7 +88,7 @@ class MealDetailScreen extends StatelessWidget {
                     ),
                   ),
                   subtitle: Text(
-                    dish['period_time'],
+                    meal.periodTime,
                     style: TextStyle(color: AppColors.lightTextSecondary),
                   ),
                 ),
@@ -103,7 +104,7 @@ class MealDetailScreen extends StatelessWidget {
                     ),
                   ),
                   subtitle: Text(
-                    '${dish['fat']} g',
+                    '${meal.fat} g',
                     style: TextStyle(color: AppColors.lightTextSecondary),
                   ),
                 ),
@@ -119,7 +120,7 @@ class MealDetailScreen extends StatelessWidget {
                     ),
                   ),
                   subtitle: Text(
-                    '${dish['carbs']} g',
+                    '${meal.carbs} g',
                     style: TextStyle(color: AppColors.lightTextSecondary),
                   ),
                 ),
@@ -138,7 +139,7 @@ class MealDetailScreen extends StatelessWidget {
                     ),
                   ),
                   subtitle: Text(
-                    '${dish['calories']} kcal',
+                    '${meal.calo} kcal',
                     style: TextStyle(color: AppColors.lightTextSecondary),
                   ),
                 ),
