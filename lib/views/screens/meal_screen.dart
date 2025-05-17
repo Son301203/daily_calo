@@ -1,3 +1,5 @@
+import 'package:daily_calo/controllers/meal_management_controller.dart';
+import 'package:daily_calo/models/meal.dart';
 import 'package:daily_calo/utils/app_color.dart';
 import 'package:flutter/material.dart';
 import 'manage_meal_screen.dart';
@@ -11,52 +13,13 @@ class MealScreen extends StatefulWidget {
 }
 
 class _MealScreenState extends State<MealScreen> {
-  final List<String> _meals = ['Bữa sáng', 'Bữa trưa', 'Bữa tối'];
-  int _selectedMealIndex = 0;
+  final List<String> meals = ['Bữa sáng', 'Bữa trưa', 'Bữa tối'];
+  int selectedMealIndex = 0;
 
-  final List<Map<String, dynamic>> _dishes = [
-    {
-      'name': 'Cháo yến mạch',
-      'serving_size': 200,
-      'protein': 5,
-      'period_time': 'Bữa sáng',
-      'fat': 2.5,
-      'carbs': 27,
-      'calories': 150,
-    },
-    {
-      'name': 'Cháo',
-      'serving_size': 250,
-      'protein': 6,
-      'period_time': 'Bữa sáng',
-      'fat': 3.0,
-      'carbs': 30,
-      'calories': 250,
-    },
-    {
-      'name': 'Cơm chiên trứng',
-      'serving_size': 300,
-      'protein': 10,
-      'period_time': 'Bữa trưa',
-      'fat': 12.0,
-      'carbs': 40,
-      'calories': 300,
-    },
-    {
-      'name': 'Salad rau củ',
-      'serving_size': 150,
-      'protein': 2,
-      'period_time': 'Bữa tối',
-      'fat': 1.0,
-      'carbs': 15,
-      'calories': 100,
-    },
-  ];
+  final MealManagementController controller = MealManagementController();
 
   @override
   Widget build(BuildContext context) {
-    final filteredDishes = _dishes.where((dish) => dish['period_time'] == _meals[_selectedMealIndex]).toList();
-
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -69,16 +32,16 @@ class _MealScreenState extends State<MealScreen> {
             icon: const Icon(Icons.add),
             color: AppColors.whiteText,
             onPressed: () async {
-              final newDish = await Navigator.push(
+              final newMeal = await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const ManageMealScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const ManageMealScreen(),
+                ),
               );
-              if (newDish != null) {
-                setState(() {
-                  _dishes.add(newDish);
-                });
+              if (newMeal != null) {
+                await controller.addMeal(newMeal);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Đã thêm ${newDish['name']}')),
+                  SnackBar(content: Text('Đã thêm ${newMeal.title}')),
                 );
               }
             },
@@ -92,90 +55,109 @@ class _MealScreenState extends State<MealScreen> {
             color: Colors.grey[200],
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: _meals.asMap().entries.map((entry) {
-                int index = entry.key;
-                String meal = entry.value;
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedMealIndex = index;
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: _selectedMealIndex == index ? AppColors.primary : Colors.transparent,
-                          width: 2,
+              children:
+                  meals.asMap().entries.map((entry) {
+                    int index = entry.key;
+                    String meal = entry.value;
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          selectedMealIndex = index;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 20,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color:
+                                  selectedMealIndex == index
+                                      ? AppColors.primary
+                                      : Colors.transparent,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          meal,
+                          style: TextStyle(
+                            fontWeight:
+                                selectedMealIndex == index
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                            color:
+                                selectedMealIndex == index
+                                    ? AppColors.primary
+                                    : Colors.black,
+                          ),
                         ),
                       ),
-                    ),
-                    child: Text(
-                      meal,
-                      style: TextStyle(
-                        fontWeight: _selectedMealIndex == index ? FontWeight.bold : FontWeight.normal,
-                        color: _selectedMealIndex == index ? AppColors.primary : Colors.black,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
+                    );
+                  }).toList(),
             ),
           ),
           // List Meal
           Expanded(
-            child: ListView.builder(
-              itemCount: filteredDishes.length,
-              itemBuilder: (context, index) {
-                final dish = filteredDishes[index];
-                return ListTile(
-                  title: Text(dish['name']),
-                  subtitle: Text("${dish['period_time']} - ${dish['calories']} kcal"),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () async {
-                          final updatedDish = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ManageMealScreen(dish: dish),
-                            ),
-                          );
-                          if (updatedDish != null) {
-                            setState(() {
-                              final dishIndex = _dishes.indexWhere((item) => item['name'] == dish['name']);
-                              if (dishIndex != -1) {
-                                _dishes[dishIndex] = updatedDish;
+            child: StreamBuilder<List<Meal>>(
+              stream: controller.getMealType(meals[selectedMealIndex]),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Co lỗi xay ra'));
+                }
+                final dishs = snapshot.data ?? [];
+                return ListView.builder(
+                  itemCount: dishs.length,
+                  itemBuilder: (context, index) {
+                    final dish = dishs[index];
+                    return ListTile(
+                      title: Text(dish.title),
+                      subtitle: Text("${dish.periodTime} - ${dish.calo} kcal"),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () async {
+                              final updatedMeal = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ManageMealScreen(meal: dish),
+                                ),
+                              );
+                              if (updatedMeal != null) {
+                                await controller.updateMeal(updatedMeal); 
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Đã cập nhật ${updatedMeal.title}')),
+                                  );
+                                }
                               }
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Đã cập nhật ${updatedDish['name']}')),
-                            );
-                          }
-                        },
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () async {
+                              await controller.deleteMeal(dish.id);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Đã xóa ${dish.title}')),
+                                );
+                              }
+                            },
+                          ),
+                        ]
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () {
-                          setState(() {
-                            _dishes.removeWhere((item) => item['name'] == dish['name']);
-                          });
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Đã xóa ${dish['name']}')),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => MealDetailScreen(dish: dish),
-                      ),
+                      onTap: (){
+                        Navigator.push(context,
+                          MaterialPageRoute(builder: (context) => MealDetailScreen(meal: dish) ) 
+                        );
+                      },
                     );
                   },
                 );
