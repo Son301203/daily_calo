@@ -1,6 +1,6 @@
-import 'package:daily_calo/views/screens/exercise_screen.dart';
-import 'package:daily_calo/views/screens/meal_screen.dart';
-import 'package:daily_calo/views/screens/profile_screen.dart';
+import 'package:daily_calo/views/screens/exercises/exercise_screen.dart';
+import 'package:daily_calo/views/screens/meals/meal_screen.dart';
+import 'package:daily_calo/views/screens/profile/profile_screen.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
