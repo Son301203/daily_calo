@@ -35,7 +35,10 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
               if (newExercise != null && context.mounted) {
                 await controller.addEx(newExercise);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Đã thêm ${newExercise.activity}'), backgroundColor: AppColors.success,),
+                  SnackBar(
+                    content: Text('Đã thêm ${newExercise.activity}'),
+                    backgroundColor: AppColors.success,
+                  ),
                 );
               }
             },
@@ -66,17 +69,40 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
+                      icon: const Icon(Icons.add, color: Colors.blue),
+                      onPressed: () async {
+                        await controller.addExerciseIdToDate(exercise.id);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Đã thêm ${exercise.activity} vào ngày hôm nay',
+                                ),
+                                backgroundColor: AppColors.success,
+                              ),
+                            );
+                          }
+                      },
+                    ),
+                    IconButton(
                       icon: const Icon(Icons.edit, color: Colors.blue),
                       onPressed: () async {
                         // Show AlertDialog for editing the exercise
                         final updatedExercise = await showDialog<Exercise>(
                           context: context,
-                          builder: (context) => ManageExerciseScreen(exercise: exercise),
+                          builder:
+                              (context) =>
+                                  ManageExerciseScreen(exercise: exercise),
                         );
                         if (updatedExercise != null && context.mounted) {
                           await controller.updateEx(updatedExercise);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Đã cập nhật ${updatedExercise.activity}'), backgroundColor: AppColors.success,),
+                            SnackBar(
+                              content: Text(
+                                'Đã cập nhật ${updatedExercise.activity}',
+                              ),
+                              backgroundColor: AppColors.success,
+                            ),
                           );
                         }
                       },
@@ -87,7 +113,10 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                         await controller.deleteEx(exercise.id);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Đã xóa ${exercise.activity}'), backgroundColor: AppColors.success,),
+                            SnackBar(
+                              content: Text('Đã xóa ${exercise.activity}'),
+                              backgroundColor: AppColors.success,
+                            ),
                           );
                         }
                       },
