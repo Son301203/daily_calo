@@ -2,10 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:daily_calo/models/exercise.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class ExerciseController {
   final CollectionReference exCollection = FirebaseFirestore.instance
       .collection('Exercises');
+  final CollectionReference usersCollection = FirebaseFirestore.instance
+      .collection('Users');
   final FirebaseAuth auth = FirebaseAuth.instance;
 
   // Get user ID
@@ -54,5 +57,36 @@ class ExerciseController {
                   )
                   .toList(),
         );
+  }
+
+  Future<void> addExerciseIdToDate(String exerciseId) async {
+    final userId = getCurrentUserId();
+    final currentDate = DateFormat('dd/MM/yy').format(DateTime.now());
+    final dateCollection = usersCollection.doc(userId).collection('Date');
+
+    final querySnapshot =
+        await dateCollection
+            .where('date', isEqualTo: currentDate)
+            .limit(1)
+            .get();
+
+    if (querySnapshot.docs.isNotEmpty) {
+      final docId = querySnapshot.docs.first.id;
+      final currentData = querySnapshot.docs.first.data();
+      final List<dynamic> currentExerciseIds =
+          currentData['exercise_id'] as List<dynamic>? ?? [];
+      currentExerciseIds.add(exerciseId);
+      await dateCollection.doc(docId).update({
+        'exercise_id': currentExerciseIds,
+      });
+    } else {
+      // Document doesn't exist, create a new one
+      await dateCollection.add({
+        'date': currentDate,
+        'exercise_id': [exerciseId],
+        'meal_id': [],
+        'quantity_water': 0,
+      });
+    }
   }
 }
