@@ -73,12 +73,10 @@ class ExerciseController {
     if (querySnapshot.docs.isNotEmpty) {
       final docId = querySnapshot.docs.first.id;
       final currentData = querySnapshot.docs.first.data();
-      final List<dynamic> currentExerciseIds =
+      final List<dynamic> currentExercise =
           currentData['exercise_id'] as List<dynamic>? ?? [];
-      currentExerciseIds.add(exerciseId);
-      await dateCollection.doc(docId).update({
-        'exercise_id': currentExerciseIds,
-      });
+      currentExercise.add(exerciseId);
+      await dateCollection.doc(docId).update({'exercise_id': currentExercise});
     } else {
       // Document doesn't exist, create a new one
       await dateCollection.add({
