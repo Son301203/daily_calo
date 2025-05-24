@@ -6,10 +6,7 @@ import 'package:daily_calo/views/screens/meals/meal_screen.dart';
 import 'package:daily_calo/views/screens/profile/profile_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-<<<<<<< Updated upstream
-=======
 import 'package:intl/intl.dart';
->>>>>>> Stashed changes
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,17 +19,12 @@ class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _selectedIndex = 0;
-<<<<<<< Updated upstream
-=======
   late HomeController _controller;
->>>>>>> Stashed changes
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-<<<<<<< Updated upstream
-=======
     _controller = HomeController(
       onDateChanged: (_) => setState(() {}),
       onWeightChanged: (_) => setState(() {}),
@@ -46,7 +38,6 @@ class _HomeScreenState extends State<HomeScreen>
         );
       });
     }
->>>>>>> Stashed changes
   }
 
   @override
@@ -60,19 +51,11 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       body: TabBarView(
         controller: _tabController,
-<<<<<<< Updated upstream
-        children: const [
-          HomeScreenContent(),
-          MealScreen(),
-          ExerciseScreen(),
-          ProfileScreen(),
-=======
         children: [
           HomeScreenContent(controller: _controller),
           const MealScreen(),
           const ExerciseScreen(),
           const ProfileScreen(),
->>>>>>> Stashed changes
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -108,24 +91,13 @@ class _HomeScreenState extends State<HomeScreen>
 
 // New widget for Home tab content
 class HomeScreenContent extends StatelessWidget {
-<<<<<<< Updated upstream
-  const HomeScreenContent({super.key});
-=======
   final HomeController controller;
 
   const HomeScreenContent({super.key, required this.controller});
->>>>>>> Stashed changes
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-<<<<<<< Updated upstream
-      appBar: AppBar(title: const Text("Trang chủ")),
-      body: Center(child: Text("Trang chủ", style: TextStyle(fontSize: 24))),
-    );
-  }
-}
-=======
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -423,4 +395,3 @@ class HomeScreenContent extends StatelessWidget {
 
 
 }
->>>>>>> Stashed changes
