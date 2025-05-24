@@ -1,4 +1,6 @@
 import 'package:daily_calo/controllers/home_controller.dart';
+import 'package:daily_calo/models/meal.dart';
+import 'package:daily_calo/utils/app_color.dart';
 import 'package:daily_calo/utils/app_theme.dart';
 import 'package:daily_calo/utils/water_glass_painter.dart';
 import 'package:daily_calo/views/screens/exercises/exercise_screen.dart';
@@ -85,6 +87,7 @@ class HomeScreenContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -94,6 +97,7 @@ class HomeScreenContent extends StatelessWidget {
               _buildCalorieCircle(context),
               _buildWaterIntake(context),
               _buildWeightGoal(context),
+              _buildMealList(context, userId!)
             ],
           ),
         ),
@@ -381,5 +385,51 @@ class HomeScreenContent extends StatelessWidget {
     );
   }
 
-
+   Widget _buildMealList(BuildContext context, String userId) {
+    return StreamBuilder<List<Meal>>(
+      stream: controller.getMealForCurrentDate(userId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return const Center(child: Text('Có lỗi xảy ra'));
+        }
+        final meals = snapshot.data ?? [];
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Bữa ăn hôm nay', style: Theme.of(context).bodyText),
+              const SizedBox(height: 8),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: meals.length,
+                itemBuilder: (context, index) {
+                  final meal = meals[index];
+                  return ListTile(
+                    title: Text(meal.title),
+                    subtitle: Text(
+                      '${meal.calo} calo - ${meal.servingSize} g - ${meal.periodTime}',
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.remove, color: Colors.blue),
+                      onPressed: () async {
+                        await controller.removeMeal(userId, index);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Đã xóa món ăn'), backgroundColor: AppColors.success,),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
