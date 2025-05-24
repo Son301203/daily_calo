@@ -1,3 +1,9 @@
+import 'package:daily_calo/routes/app_routes.dart';
+import 'package:daily_calo/views/auth/login_screen.dart';
+import 'package:daily_calo/views/screens/profile/changeInfo_screen.dart';
+import 'package:intl/intl.dart';
+import '../../../controllers/profile_controllers.dart';
+import '../../../models/user.dart';
 import 'package:flutter/material.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -8,12 +14,32 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  int currentWater = 0; // lượng nước hiện tại (ml)
-  final int targetWater = 1950; // mục tiêu (ml)
+  int currentWater = 0;
+  late int targetWater;
+  UserModel? _profile;
+  final ProfileController _controller = ProfileController();
+  bool isLoading = true;
+  int stepWater = 150;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    await _controller.loadUserProfile();
+    setState(() {
+      _profile = _controller.user;
+      targetWater = _controller.calculateWaterIntake();
+      isLoading = false;
+      print('ProfileScreen: weightUpdatedAt = ${_profile?.weightUpdatedAt}'); // Debug print
+    });
+  }
 
   void _increaseWater() {
     setState(() {
-      currentWater += 150; // mỗi lần cộng 150ml
+      currentWater += stepWater;
       if (currentWater > targetWater) {
         currentWater = targetWater;
       }
@@ -22,11 +48,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _decreaseWater() {
     setState(() {
-      currentWater -= 150;
+      currentWater -= stepWater;
       if (currentWater < 0) {
         currentWater = 0;
       }
     });
+  }
+
+  String _formatWeightUpdateDate(DateTime? date) {
+    if (date == null) return "Chưa cập nhật";
+    final formatter = DateFormat('dd/MM/yyyy HH:mm');
+    return formatter.format(date);
   }
 
   double _calculateProgress() {
@@ -49,6 +81,155 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _showEditDialog(BuildContext context) {
+    final TextEditingController heightController = TextEditingController(
+      text: _profile?.height?.toString() ?? '',
+    );
+    final TextEditingController weightController = TextEditingController(
+      text: _profile?.weight?.toString() ?? '',
+    );
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Cập nhật chỉ số cơ thể'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: heightController,
+                  decoration: const InputDecoration(
+                    labelText: 'Chiều cao (cm)',
+                    hintText: 'Nhập chiều cao của bạn',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: weightController,
+                  decoration: const InputDecoration(
+                    labelText: 'Cân nặng (kg)',
+                    hintText: 'Nhập cân nặng của bạn',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                final double? height = double.tryParse(heightController.text);
+                final double? weight = double.tryParse(weightController.text);
+
+                if (height != null && weight != null && _profile != null) {
+                  Navigator.of(context).pop();
+                  setState(() {
+                    isLoading = true;
+                  });
+
+                  try {
+                    await _controller.updateUserProfile(
+                      name: _profile!.name,
+                      height: height,
+                      weight: weight,
+                    );
+                    await _loadProfile();
+
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Đã cập nhật thông tin thành công'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Lỗi khi cập nhật: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Vui lòng nhập thông tin hợp lệ'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Cập nhật'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showEditWaterStepDialog(BuildContext context) {
+    final TextEditingController stepController = TextEditingController(
+      text: stepWater.toString(),
+    );
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Chỉnh lượng nước mỗi lần cộng/trừ'),
+          content: TextField(
+            controller: stepController,
+            decoration: const InputDecoration(
+              labelText: 'Đơn vị ml',
+              hintText: 'VD: 150, 200...',
+            ),
+            keyboardType: TextInputType.number,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              onPressed: () {
+                final int? newStep = int.tryParse(stepController.text);
+                if (newStep != null && newStep > 0) {
+                  setState(() {
+                    stepWater = newStep;
+                  });
+                  Navigator.of(context).pop();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Vui lòng nhập giá trị hợp lệ (> 0)'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Lưu'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -62,57 +243,82 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.white),
-            onPressed: () {},
+            onPressed: () {
+              if (_profile != null) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => ChangeInforScreen(user: _profile!),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('User chưa sẵn sàng.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildProfileHeader(),
-            const SizedBox(height: 16),
-            _buildPremiumBanner(),
-            const SizedBox(height: 16),
-            _buildBMISection(context),
-            const SizedBox(height: 16),
-            _buildWaterIntakeSection(context),
-          ],
-        ),
-      ),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildProfileHeader(),
+                  const SizedBox(height: 16),
+                  _buildPremiumBanner(),
+                  const SizedBox(height: 16),
+                  _buildBMISection(context),
+                  const SizedBox(height: 16),
+                  _buildWaterIntakeSection(context),
+                ],
+              ),
+            ),
     );
   }
 
-  // tên người dùng
   Widget _buildProfileHeader() {
     return Container(
       color: Colors.green,
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 30,
             backgroundColor: Colors.white,
             child: Text(
-              "T",
-              style: TextStyle(fontSize: 30, color: Colors.green),
+              _profile?.name.isNotEmpty == true ? _profile!.name[0] : "U",
+              style: const TextStyle(fontSize: 30, color: Colors.green),
             ),
           ),
           const SizedBox(width: 16),
-          const Text(
-            "Thùy Quỳnh Chu",
-            style: TextStyle(
+          Text(
+            _profile?.name ?? "Người dùng",
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
           const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: () {
+              _controller.signOut();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Đăng xuất thành công')),
+              );
+              Navigator.of(context).pushReplacementNamed(AppRoutes.login);
+            },
+          ),
         ],
       ),
     );
   }
 
-  // thanh gói premium
   Widget _buildPremiumBanner() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -152,8 +358,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // chỉ số khối cơ thể
   Widget _buildBMISection(BuildContext context) {
+    final bmi = _controller.calculateBMI();
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
@@ -171,29 +378,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 "Chỉ số khối cơ thể (BMI)",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
+              IconButton(
+                icon: const Icon(Icons.more_vert),
+                onPressed: () => _showEditDialog(context),
+              ),
             ],
           ),
           const SizedBox(height: 12),
-
-          // chỉ số BMI và thời gian
           Row(
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
+                  children: [
+                    const Text(
                       "BMI",
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      "23.4",
-                      style: TextStyle(
+                      bmi > 0 ? bmi.toStringAsFixed(1) : "---",
+                      style: const TextStyle(
                         fontSize: 20,
                         color: Colors.red,
                         fontWeight: FontWeight.bold,
@@ -202,24 +410,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
-              // chỉ số cân nặng và chiều cao
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      children: const [
-                        Icon(Icons.access_time, size: 16, color: Colors.grey),
-                        SizedBox(width: 4),
+                      children: [
+                        const Icon(
+                          Icons.access_time,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 4),
                         Text(
-                          "26 tháng 8 - 06:28",
-                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                          _profile?.weightUpdatedAt != null
+                              ? '${_formatWeightUpdateDate(_profile!.weightUpdatedAt)}'
+                              : 'Chưa có ngày cập nhật cân nặng',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
                     const Text(
-                      "Cập nhật cân nặng",
+                      "Ngày cập nhật cân nặng",
                       style: TextStyle(fontSize: 14, color: Colors.orange),
                     ),
                   ],
@@ -227,36 +443,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 12),
-          // Thêm Divider mờ
           Divider(
-            color: Colors.black26, // Màu đen mờ
-            thickness: 1, // Độ dày của gạch ngang
-            height: 20, // Khoảng cách giữa các widget trên và dưới Divider
+            color: Colors.black26,
+            thickness: 1,
+            height: 20,
             endIndent: MediaQuery.of(context).size.width * 0.1,
             indent: MediaQuery.of(context).size.width * 0.1,
           ),
-          // Chiều cao và cân nặng
           Row(
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text("154.5 cm", style: TextStyle(fontSize: 16)),
-                    SizedBox(height: 4),
-                    Text("Chiều cao", style: TextStyle(color: Colors.grey)),
+                  children: [
+                    Text(
+                      _profile?.height != null
+                          ? "${_profile!.height.toStringAsFixed(1)} cm"
+                          : "--- cm",
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      "Chiều cao",
+                      style: TextStyle(color: Colors.grey),
+                    ),
                   ],
                 ),
               ),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text("56 kg", style: TextStyle(fontSize: 16)),
-                    SizedBox(height: 4),
-                    Text("Cân nặng tốt", style: TextStyle(color: Colors.grey)),
+                  children: [
+                    Text(
+                      _profile?.weight != null
+                          ? "${_profile!.weight.toStringAsFixed(1)} kg"
+                          : "--- kg",
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      "Cân nặng tốt",
+                      style: TextStyle(color: Colors.grey),
+                    ),
                   ],
                 ),
               ),
@@ -267,7 +496,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // chỉ số uống nước
   Widget _buildWaterIntakeSection(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -286,14 +514,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 "Bạn nên uống bao nhiêu nước",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
+              IconButton(
+                icon: const Icon(Icons.more_vert),
+                onPressed: () => _showEditWaterStepDialog(context),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // thông tin bên trái
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -357,8 +587,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
-
-              // cột chứa nút và thanh nước
               Column(
                 children: [
                   Column(
@@ -374,7 +602,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ],
                           ),
                           const SizedBox(width: 12),
-                          // Thanh hiển thị nước
                           Container(
                             width: 60,
                             height: 120,
@@ -387,17 +614,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               alignment: Alignment.bottomCenter,
                               children: [
                                 FractionallySizedBox(
-                                  heightFactor: _calculateProgress() == 0 ? 0.05 : _calculateProgress(),
+                                  heightFactor: _calculateProgress() == 0
+                                      ? 0.05
+                                      : _calculateProgress(),
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: const Color.fromARGB(255, 123, 168, 246),
+                                      color: const Color.fromARGB(
+                                        255,
+                                        123,
+                                        168,
+                                        246,
+                                      ),
                                       borderRadius: BorderRadius.circular(30),
                                     ),
                                   ),
                                 ),
                                 Center(
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: Colors.black54,
                                       borderRadius: BorderRadius.circular(8),
@@ -418,7 +655,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ],
                       ),
                       const SizedBox(height: 20),
-
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
