@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:daily_calo/models/health.dart';
+import 'package:daily_calo/models/exercise.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -18,8 +19,10 @@ class HomeController {
   final ValueChanged<DateTime>? onDateChanged;
   final ValueChanged<double>? onWeightChanged;
   final ValueChanged<int>? onWaterIntakeChanged;
-  final CollectionReference _usersCollection =
-      FirebaseFirestore.instance.collection('Users');
+  final CollectionReference _usersCollection = FirebaseFirestore.instance
+      .collection('Users');
+  final CollectionReference _exercisesCollection = FirebaseFirestore.instance
+      .collection('Exercises');
 
   HomeController({
     this.onDateChanged,
@@ -61,12 +64,18 @@ class HomeController {
     onWaterIntakeChanged?.call(_waterIntake);
   }
 
-  Future<void> _updateWaterIntakeInFirestore(String userId, int waterIntake) async {
+  Future<void> _updateWaterIntakeInFirestore(
+    String userId,
+    int waterIntake,
+  ) async {
     final currentDate = DateFormat('dd/MM/yy').format(_today);
     final dateCollection = _usersCollection.doc(userId).collection('Date');
 
     final querySnapshot =
-        await dateCollection.where('date', isEqualTo: currentDate).limit(1).get();
+        await dateCollection
+            .where('date', isEqualTo: currentDate)
+            .limit(1)
+            .get();
 
     if (querySnapshot.docs.isNotEmpty) {
       final docId = querySnapshot.docs.first.id;
@@ -105,45 +114,108 @@ class HomeController {
   }
 
   Future<double?> showWeightDialog(BuildContext context) async {
-    TextEditingController weightController =
-        TextEditingController(text: _currentWeight.toString());
+    TextEditingController weightController = TextEditingController(
+      text: _currentWeight.toString(),
+    );
     double? newWeight;
 
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cập nhật cân nặng'),
-        content: TextField(
-          controller: weightController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-            labelText: 'Cân nặng (kg)',
-            border: OutlineInputBorder(),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Cập nhật cân nặng'),
+            content: TextField(
+              controller: weightController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Cân nặng (kg)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Hủy'),
+              ),
+              TextButton(
+                onPressed: () {
+                  final weight = double.tryParse(weightController.text);
+                  if (weight != null && weight > 0) {
+                    newWeight = weight;
+                    Navigator.pop(context);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Vui lòng nhập cân nặng hợp lệ'),
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Xác nhận'),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Hủy'),
-          ),
-          TextButton(
-            onPressed: () {
-              final weight = double.tryParse(weightController.text);
-              if (weight != null && weight > 0) {
-                newWeight = weight;
-                Navigator.pop(context);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Vui lòng nhập cân nặng hợp lệ')),
-                );
-              }
-            },
-            child: const Text('Xác nhận'),
-          ),
-        ],
-      ),
     );
 
     return newWeight;
+  }
+
+  Stream<List<Exercise>> getExercisesForCurrentDate(String userId) {
+    final currentDate = DateFormat('dd/MM/yy').format(_today);
+    return _usersCollection
+        .doc(userId)
+        .collection('Date')
+        .where('date', isEqualTo: currentDate)
+        .limit(1)
+        .snapshots()
+        .asyncMap((dateSnapshot) async {
+          if (dateSnapshot.docs.isEmpty) return <Exercise>[];
+
+          final dateDoc = dateSnapshot.docs.first;
+          final exerciseIds = List<String>.from(dateDoc['exercise_id'] ?? []);
+
+          if (exerciseIds.isEmpty) return <Exercise>[];
+
+          final List<Exercise> exercises = [];
+          for (final exerciseId in exerciseIds) {
+            final doc = await _exercisesCollection.doc(exerciseId).get();
+            if (doc.exists && doc['user_id'] == userId) {
+              exercises.add(
+                Exercise.fromMap(
+                  exerciseId,
+                  doc.data() as Map<String, dynamic>,
+                ),
+              );
+            }
+          }
+
+          return exercises;
+        });
+  }
+
+  Future<void> removeExercise(String userId, int index) async {
+    final currentDate = DateFormat('dd/MM/yy').format(_today);
+    final dateCollection = _usersCollection.doc(userId).collection('Date');
+
+    final querySnapshot =
+        await dateCollection
+            .where('date', isEqualTo: currentDate)
+            .limit(1)
+            .get();
+
+    if (querySnapshot.docs.isEmpty) return;
+
+    final doc = querySnapshot.docs.first;
+    final exerciseIds = List<String>.from(doc['exercise_id'] ?? []);
+
+    if (index < 0 || index >= exerciseIds.length) return;
+
+    // Remove the exercise_id at the specified index
+    exerciseIds.removeAt(index);
+
+    // Update the Firestore document with the modified exercise_ids array
+    await dateCollection.doc(doc.id).update({'exercise_id': exerciseIds});
   }
 }
