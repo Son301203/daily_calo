@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:daily_calo/models/health.dart';
+import 'package:daily_calo/models/meal.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -20,6 +21,10 @@ class HomeController {
   final ValueChanged<int>? onWaterIntakeChanged;
   final CollectionReference _usersCollection =
       FirebaseFirestore.instance.collection('Users');
+
+
+  final CollectionReference _mealCollection = FirebaseFirestore.instance
+      .collection('Meals');
 
   HomeController({
     this.onDateChanged,
@@ -145,5 +150,61 @@ class HomeController {
     );
 
     return newWeight;
+  }
+
+
+  Stream<List<Meal>> getMealForCurrentDate(String userId) {
+    final currentDate = DateFormat('dd/MM/yy').format(_today);
+    return _usersCollection
+        .doc(userId)
+        .collection('Date')
+        .where('date', isEqualTo: currentDate)
+        .limit(1)
+        .snapshots()
+        .asyncMap((dateSnapshot) async {
+          if (dateSnapshot.docs.isEmpty) return <Meal>[];
+
+          final dateDoc = dateSnapshot.docs.first;
+          final mealIds = List<String>.from(dateDoc['meal_id'] ?? []);
+
+          if (mealIds.isEmpty) return <Meal>[];
+
+          final List<Meal> meals = [];
+          for (final mealId in mealIds) {
+            final doc = await _mealCollection.doc(mealId).get();
+            if (doc.exists && doc['user_id'] == userId) {
+              meals.add(
+                Meal.fromMap(
+                  mealId,
+                  doc.data() as Map<String, dynamic>,
+                ),
+              );
+            }
+          }
+
+          return meals;
+        });
+  }
+
+  Future<void> removeMeal(String userId, int index) async {
+    final currentDate = DateFormat('dd/MM/yy').format(_today);
+    final dateCollection = _usersCollection.doc(userId).collection('Date');
+
+    final querySnapshot =
+        await dateCollection
+            .where('date', isEqualTo: currentDate)
+            .limit(1)
+            .get();
+
+    if (querySnapshot.docs.isEmpty) return;
+
+    final doc = querySnapshot.docs.first;
+    final mealIds = List<String>.from(doc['meal_id'] ?? []);
+
+    if (index < 0 || index >= mealIds.length) return;
+
+    mealIds.removeAt(index);
+
+    await dateCollection.doc(doc.id).update({'meal_id': mealIds});
   }
 }
