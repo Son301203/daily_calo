@@ -2,10 +2,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:daily_calo/models/meal.dart';
 
+import 'package:intl/intl.dart';
+
 class MealManagementController {
   final CollectionReference mealsCollection = FirebaseFirestore.instance
       .collection('Meals');
   final FirebaseAuth auth = FirebaseAuth.instance;
+    final CollectionReference usersCollection = FirebaseFirestore.instance
+      .collection('Users');
 
   // Get user ID
   String? getCurrentUserId() {
@@ -60,5 +64,36 @@ class MealManagementController {
       return Meal.fromMap(doc.id, doc.data() as Map<String, dynamic>);
     }
     return null;
+  }
+
+
+  Future<void> addDishToDate(String mealId) async {
+    final userId = getCurrentUserId();
+    final currentDate = DateFormat('dd/MM/yy').format(DateTime.now());
+    final dateCollection = usersCollection.doc(userId).collection('Date');
+
+    final querySnapshot =
+        await dateCollection
+            .where('date', isEqualTo: currentDate)
+            .limit(1)
+            .get();
+
+    if (querySnapshot.docs.isNotEmpty) {
+      final docId = querySnapshot.docs.first.id;
+      final currentData = querySnapshot.docs.first.data();
+      final List<dynamic> currentMeals =
+          currentData['meal_id'] as List<dynamic>? ?? [];
+      currentMeals.add(mealId);
+      await dateCollection.doc(docId).update({
+        'meal_id': currentMeals,
+      });
+    } else {
+      await dateCollection.add({
+        'date': currentDate,
+        'exercise_id': [],
+        'meal_id': [mealId],
+        'quantity_water': 0,
+      });
+    }
   }
 }

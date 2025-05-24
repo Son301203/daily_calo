@@ -122,6 +122,22 @@ class _MealScreenState extends State<MealScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
+                      icon: const Icon(Icons.add, color: Colors.blue),
+                      onPressed: () async {
+                        await controller.addDishToDate(dish.id);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Đã thêm ${dish.title} vào ngày hôm nay',
+                                ),
+                                backgroundColor: AppColors.success,
+                              ),
+                            );
+                          }
+                      },
+                    ),
+                          IconButton(
                             icon: const Icon(Icons.edit, color: Colors.blue),
                             onPressed: () async {
                               final updatedMeal = await Navigator.push(
