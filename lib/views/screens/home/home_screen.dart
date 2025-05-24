@@ -1,4 +1,6 @@
 import 'package:daily_calo/controllers/home_controller.dart';
+import 'package:daily_calo/models/exercise.dart';
+import 'package:daily_calo/utils/app_color.dart';
 import 'package:daily_calo/models/meal.dart';
 import 'package:daily_calo/utils/app_color.dart';
 import 'package:daily_calo/utils/app_theme.dart';
@@ -17,7 +19,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _selectedIndex = 0;
   late HomeController _controller;
@@ -70,10 +73,22 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.blue,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: "Trang chủ"),
-          BottomNavigationBarItem(icon: Icon(Icons.dining_outlined), label: "Bữa ăn"),
-          BottomNavigationBarItem(icon: Icon(Icons.healing_outlined), label: "Tập luyện"),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: "Thông tin"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            label: "Trang chủ",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dining_outlined),
+            label: "Bữa ăn",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.healing_outlined),
+            label: "Tập luyện",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: "Thông tin",
+          ),
         ],
       ),
     );
@@ -97,7 +112,8 @@ class HomeScreenContent extends StatelessWidget {
               _buildCalorieCircle(context),
               _buildWaterIntake(context),
               _buildWeightGoal(context),
-              _buildMealList(context, userId!)
+              _buildMealList(context, userId!),
+              _buildExerciseList(context, userId!),
             ],
           ),
         ),
@@ -117,19 +133,27 @@ class HomeScreenContent extends StatelessWidget {
             children: [
               IconButton(
                 icon: const Icon(Icons.chevron_left, color: Colors.white),
-                onPressed: () =>
-                    controller.setDate(controller.today.subtract(const Duration(days: 1))),
+                onPressed:
+                    () => controller.setDate(
+                      controller.today.subtract(const Duration(days: 1)),
+                    ),
               ),
               GestureDetector(
                 onTap: () async {
-                  final selectedDate = await controller.showDatePickerDialog(context);
+                  final selectedDate = await controller.showDatePickerDialog(
+                    context,
+                  );
                   if (selectedDate != null) {
                     controller.setDate(selectedDate);
                   }
                 },
                 child: Row(
                   children: [
-                    const Icon(Icons.calendar_today, color: Colors.white, size: 18),
+                    const Icon(
+                      Icons.calendar_today,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       controller.formattedDate,
@@ -140,8 +164,10 @@ class HomeScreenContent extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.chevron_right, color: Colors.white),
-                onPressed: () =>
-                    controller.setDate(controller.today.add(const Duration(days: 1))),
+                onPressed:
+                    () => controller.setDate(
+                      controller.today.add(const Duration(days: 1)),
+                    ),
               ),
             ],
           ),
@@ -170,7 +196,9 @@ class HomeScreenContent extends StatelessWidget {
       children: [
         Text(
           value,
-          style: Theme.of(context).subHeaderText.copyWith(fontSize: 20, fontWeight: FontWeight.bold),
+          style: Theme.of(
+            context,
+          ).subHeaderText.copyWith(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         Text(label, style: Theme.of(context).nutrientText),
       ],
@@ -189,7 +217,10 @@ class HomeScreenContent extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('${controller.caloriesNeeded}', style: Theme.of(context).calorieText),
+            Text(
+              '${controller.caloriesNeeded}',
+              style: Theme.of(context).calorieText,
+            ),
             Text('cần nạp', style: Theme.of(context).nutrientText),
           ],
         ),
@@ -210,7 +241,10 @@ class HomeScreenContent extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Bạn đã uống bao nhiêu nước', style: Theme.of(context).bodyText),
+              Text(
+                'Bạn đã uống bao nhiêu nước',
+                style: Theme.of(context).bodyText,
+              ),
               Text(
                 '${controller.waterIntake}/${controller.waterGoal} ml',
                 style: Theme.of(context).bodyText.copyWith(color: Colors.blue),
@@ -228,7 +262,13 @@ class HomeScreenContent extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: List.generate(
                 totalGlasses,
-                (index) => _buildWaterGlass(context, index, filledGlasses, totalGlasses, userId),
+                (index) => _buildWaterGlass(
+                  context,
+                  index,
+                  filledGlasses,
+                  totalGlasses,
+                  userId,
+                ),
               ),
             ),
           ),
@@ -238,28 +278,36 @@ class HomeScreenContent extends StatelessWidget {
   }
 
   Widget _buildWaterGlass(
-      BuildContext context, int index, int filledGlasses, int totalGlasses, String? userId) {
+    BuildContext context,
+    int index,
+    int filledGlasses,
+    int totalGlasses,
+    String? userId,
+  ) {
     final bool isFilled = index < filledGlasses;
-    final bool showAddIcon = index == filledGlasses && filledGlasses < totalGlasses;
+    final bool showAddIcon =
+        index == filledGlasses && filledGlasses < totalGlasses;
 
     return GestureDetector(
-      onTap: showAddIcon && userId != null
-          ? () async {
-              try {
-                await controller.updateWaterIntake(userId);
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Lỗi: $e')),
-                );
+      onTap:
+          showAddIcon && userId != null
+              ? () async {
+                try {
+                  await controller.updateWaterIntake(userId);
+                } catch (e) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+                }
               }
-            }
-          : null,
+              : null,
       child: Container(
         width: 30,
         height: 40,
         margin: const EdgeInsets.symmetric(horizontal: 2),
         decoration: BoxDecoration(
-          border: isFilled ? null : Border.all(color: Colors.blue.withOpacity(0.3)),
+          border:
+              isFilled ? null : Border.all(color: Colors.blue.withOpacity(0.3)),
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(4),
             topRight: Radius.circular(4),
@@ -289,7 +337,9 @@ class HomeScreenContent extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
-                    boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black12, blurRadius: 2),
+                    ],
                   ),
                   child: const Icon(Icons.add, size: 16, color: Colors.blue),
                 ),
@@ -320,19 +370,28 @@ class HomeScreenContent extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Cân nặng', style: Theme.of(context).smallText.copyWith(fontSize: 16)),
+              Text(
+                'Cân nặng',
+                style: Theme.of(context).smallText.copyWith(fontSize: 16),
+              ),
               Container(
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
                   boxShadow: [
-                    BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
                   ],
                 ),
                 child: IconButton(
                   icon: const Icon(Icons.add, color: Colors.grey),
                   onPressed: () async {
-                    final newWeight = await controller.showWeightDialog(context);
+                    final newWeight = await controller.showWeightDialog(
+                      context,
+                    );
                     if (newWeight != null) {
                       controller.updateWeight(newWeight);
                     }
@@ -368,7 +427,9 @@ class HomeScreenContent extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      DateFormat('d \'th\' M').format(controller.previousWeightDate),
+                      DateFormat(
+                        'd \'th\' M',
+                      ).format(controller.previousWeightDate),
                       style: Theme.of(context).smallText,
                     ),
                     Text(
@@ -385,7 +446,53 @@ class HomeScreenContent extends StatelessWidget {
     );
   }
 
-   Widget _buildMealList(BuildContext context, String userId) {
+  Widget _buildExerciseList(BuildContext context, String userId) {
+    return StreamBuilder<List<Exercise>>(
+      stream: controller.getExercisesForCurrentDate(userId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return const Center(child: Text('Có lỗi xảy ra'));
+        }
+        final exercises = snapshot.data ?? [];
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Bài tập hôm nay', style: Theme.of(context).bodyText),
+              const SizedBox(height: 8),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: exercises.length,
+                itemBuilder: (context, index) {
+                  final exercise = exercises[index];
+                  return ListTile(
+                    title: Text(exercise.activity),
+                    subtitle: Text(
+                      '${exercise.time} phút - ${exercise.kcal} kcal',
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.remove, color: Colors.blue),
+                      onPressed: () async {
+                        await controller.removeExercise(userId, index);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Đã xóa bài tập'), backgroundColor: AppColors.success,),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }   Widget _buildMealList(BuildContext context, String userId) {
     return StreamBuilder<List<Meal>>(
       stream: controller.getMealForCurrentDate(userId),
       builder: (context, snapshot) {
