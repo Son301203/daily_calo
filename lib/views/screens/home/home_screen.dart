@@ -140,7 +140,7 @@ class HomeScreenContent extends StatelessWidget {
           child: Column(
             children: [
               _buildHeader(context),
-              _buildCalorieCircle(context),
+              _buildCalorieCircle(context, userId!),
               _buildWaterIntake(context),
               _buildWeightGoal(context),
               _buildMealList(context, userId!),
@@ -192,7 +192,7 @@ class HomeScreenContent extends StatelessWidget {
     );
   }
 
-  Widget _buildCalorieCircle(BuildContext context) {
+  Widget _buildCalorieCircle(BuildContext context, String userId) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 24),
       color: const Color(0xFF4cd964),
@@ -201,7 +201,19 @@ class HomeScreenContent extends StatelessWidget {
         children: [
           _buildStatColumn(context, '0', 'đã nạp'),
           _buildCircleProgress(context),
-          _buildStatColumn(context, '0', 'tiêu hao'),
+          StreamBuilder<int>(
+            stream: controller.getTotalCaloriesBurned(userId),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return _buildStatColumn(context, '0', 'tiêu hao');
+              }
+              if (snapshot.hasError) {
+                return _buildStatColumn(context, 'Lỗi', 'tiêu hao');
+              }
+              final totalCaloriesBurned = snapshot.data ?? 0;
+              return _buildStatColumn(context, '$totalCaloriesBurned', 'tiêu hao');
+            },
+          ),
         ],
       ),
     );
