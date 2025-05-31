@@ -2,7 +2,6 @@ import 'package:daily_calo/controllers/home_controller.dart';
 import 'package:daily_calo/models/exercise.dart';
 import 'package:daily_calo/utils/app_color.dart';
 import 'package:daily_calo/models/meal.dart';
-import 'package:daily_calo/utils/app_color.dart';
 import 'package:daily_calo/controllers/profile_controllers.dart';
 import 'package:daily_calo/utils/app_theme.dart';
 import 'package:daily_calo/utils/water_glass_painter.dart';
@@ -31,15 +30,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    final userId = FirebaseAuth.instance.currentUser?.uid;
     _controller = HomeController(
       onDateChanged: (_) => setState(() {}),
       onWeightChanged: (_) => setState(() {}),
       onWaterIntakeChanged: (_) => setState(() {}),
+      onCaloriesNeededChanged: (value) => setState(() {}), // Handle calories needed updates
+      userId: userId,
     );
     _profileController = ProfileController();
     _loadProfileFuture = _loadProfileData();
 
-    if (FirebaseAuth.instance.currentUser == null) {
+    if (userId == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Vui lòng đăng nhập để tiếp tục')),
@@ -59,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   void dispose() {
     _tabController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -134,16 +137,19 @@ class HomeScreenContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      return const Center(child: Text('Vui lòng đăng nhập để tiếp tục'));
+    }
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
             children: [
               _buildHeader(context),
-              _buildCalorieCircle(context, userId!),
+              _buildCalorieCircle(context, userId),
               _buildWaterIntake(context),
               _buildWeightGoal(context),
-              _buildMealList(context, userId!),
+              _buildMealList(context, userId),
               _buildExerciseList(context, userId),
             ],
           ),
@@ -200,7 +206,7 @@ class HomeScreenContent extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           // Intake
-           StreamBuilder<int>(
+          StreamBuilder<int>(
             stream: controller.getTotalCaloriesIntake(userId),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
@@ -210,10 +216,7 @@ class HomeScreenContent extends StatelessWidget {
               return _buildStatColumn(context, '$totalCaloriesIntake', 'đã nạp');
             },
           ),
-
-
           _buildCircleProgress(context),
-
           // Burned
           StreamBuilder<int>(
             stream: controller.getTotalCaloriesBurned(userId),
@@ -431,50 +434,54 @@ class HomeScreenContent extends StatelessWidget {
   }
 
   Widget _buildExerciseList(BuildContext context, String userId) {
-    return StreamBuilder<List<Exercise>>(
-      stream: controller.getExercisesForCurrentDate(userId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return const Center(child: Text('Có lỗi xảy ra'));
-        }
-        final exercises = snapshot.data ?? [];
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Bài tập hôm nay', style: Theme.of(context).bodyText),
-              const SizedBox(height: 8),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: exercises.length,
-                itemBuilder: (context, index) {
-                  final exercise = exercises[index];
-                  return ListTile(
-                    title: Text(exercise.activity),
-                    subtitle: Text('${exercise.time} phút - ${exercise.kcal} kcal'),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.remove, color: Colors.blue),
-                      onPressed: () async {
-                        await controller.removeExercise(userId, index);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Đã xóa bài tập'), backgroundColor: AppColors.success),
-                        );
-                      },
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+  return StreamBuilder<List<Exercise>>(
+    stream: controller.getExercisesForCurrentDate(userId),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (snapshot.hasError) {
+        return const Center(child: Text('Có lỗi xảy ra'));
+      }
+      final exercises = snapshot.data ?? [];
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Bài tập hôm nay', style: Theme.of(context).bodyText),
+            const SizedBox(height: 8),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: exercises.length,
+              itemBuilder: (buildContext, index) {
+                final exercise = exercises[index];
+                return ListTile(
+                  title: Text(exercise.activity),
+                  subtitle: Text('${exercise.time} phút - ${exercise.kcal} kcal'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.remove, color: Colors.blue),
+                    onPressed: () async {
+                      await controller.removeExercise(userId, index);
+                      // Use the parent context from _buildExerciseList
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Đã xóa bài tập'),
+                          backgroundColor: AppColors.success,
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
 
   Widget _buildMealList(BuildContext context, String userId) {
     return StreamBuilder<List<Meal>>(
