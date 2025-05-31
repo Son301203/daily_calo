@@ -146,7 +146,7 @@ class HomeController {
     _waterService.removeListener(_onWaterServiceChanged);
   }
 
-
+  // get Meal For Current Date
   Stream<List<Meal>> getMealForCurrentDate(String userId) {
     final currentDate = DateFormat('dd/MM/yy').format(_today);
     return _usersCollection
@@ -180,6 +180,7 @@ class HomeController {
         });
   }
 
+  // remove Meal
   Future<void> removeMeal(String userId, int index) async {
     final currentDate = DateFormat('dd/MM/yy').format(_today);
     final dateCollection = _usersCollection.doc(userId).collection('Date');
@@ -202,6 +203,7 @@ class HomeController {
     await dateCollection.doc(doc.id).update({'meal_id': mealIds});
   }
 
+  //get Exercises For Current Date
   Stream<List<Exercise>> getExercisesForCurrentDate(String userId) {
     final currentDate = DateFormat('dd/MM/yy').format(_today);
     return _usersCollection
@@ -235,6 +237,8 @@ class HomeController {
         });
   }
 
+
+  // remove Exercise
   Future<void> removeExercise(String userId, int index) async {
     final currentDate = DateFormat('dd/MM/yy').format(_today);
     final dateCollection = _usersCollection.doc(userId).collection('Date');
@@ -252,16 +256,22 @@ class HomeController {
 
     if (index < 0 || index >= exerciseIds.length) return;
 
-    // Remove the exercise_id at the specified index
     exerciseIds.removeAt(index);
 
-    // Update the Firestore document with the modified exercise_ids array
     await dateCollection.doc(doc.id).update({'exercise_id': exerciseIds});
   }
 
+  // get Total Calories Burned
   Stream<int> getTotalCaloriesBurned(String userId) {
     return getExercisesForCurrentDate(userId).map((exercises) {
       return exercises.fold(0, (sum, exercise) => sum + exercise.kcal);
+    });
+  }
+
+  // get Total Calories Intake
+  Stream<int> getTotalCaloriesIntake(String userId) {
+    return getMealForCurrentDate(userId).map((meals) {
+      return meals.fold(0, (sum, meal) => sum + meal.calo);
     });
   }
 }

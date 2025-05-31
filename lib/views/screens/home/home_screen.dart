@@ -199,8 +199,25 @@ class HomeScreenContent extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildStatColumn(context, '0', 'đã nạp'),
+          // Intake
+           StreamBuilder<int>(
+            stream: controller.getTotalCaloriesIntake(userId),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return _buildStatColumn(context, '0', 'đã nạp');
+              }
+              if (snapshot.hasError) {
+                return _buildStatColumn(context, 'Lỗi', 'đã nạp');
+              }
+              final totalCaloriesIntake = snapshot.data ?? 0;
+              return _buildStatColumn(context, '$totalCaloriesIntake', 'đã nạp');
+            },
+          ),
+
+
           _buildCircleProgress(context),
+
+          // Burned
           StreamBuilder<int>(
             stream: controller.getTotalCaloriesBurned(userId),
             builder: (context, snapshot) {
