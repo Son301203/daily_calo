@@ -1,12 +1,43 @@
 import 'package:daily_calo/controllers/home_controller.dart';
+import 'package:daily_calo/controllers/profile_controllers.dart';
 import 'package:daily_calo/utils/app_theme.dart';
-import 'package:daily_calo/utils/water_glass_painter.dart';
 import 'package:daily_calo/views/screens/exercises/exercise_screen.dart';
 import 'package:daily_calo/views/screens/meals/meal_screen.dart';
 import 'package:daily_calo/views/screens/profile/profile_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
+class WaterGlassPainter extends CustomPainter {
+  final bool filled;
+
+  WaterGlassPainter({required this.filled});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = filled ? const Color.fromARGB(255, 123, 168, 246) : Colors.transparent;
+
+    final borderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.blue.withOpacity(0.3)
+      ..strokeWidth = 1;
+
+    final path = Path()
+      ..moveTo(size.width * 0.25, size.height) 
+      ..lineTo(0, 0) 
+      ..lineTo(size.width, 0) 
+      ..lineTo(size.width * 0.75, size.height) 
+      ..close();
+
+    canvas.drawPath(path, paint);
+    canvas.drawPath(path, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   late TabController _tabController;
   int _selectedIndex = 0;
   late HomeController _controller;
+  late ProfileController _profileController;
 
   @override
   void initState() {
@@ -29,13 +61,24 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       onWeightChanged: (_) => setState(() {}),
       onWaterIntakeChanged: (_) => setState(() {}),
     );
-    // Check if user is logged in
+    _profileController = ProfileController();
+    _loadProfileData();
+
     if (FirebaseAuth.instance.currentUser == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Vui lòng đăng nhập để tiếp tục')),
         );
       });
+    }
+  }
+
+  Future<void> _loadProfileData() async {
+    try {
+      await _profileController.loadUserProfile();
+      setState(() {});
+    } catch (e) {
+      debugPrint('Error loading profile data: $e');
     }
   }
 
@@ -51,7 +94,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       body: TabBarView(
         controller: _tabController,
         children: [
-          HomeScreenContent(controller: _controller),
+          HomeScreenContent(
+            controller: _controller,
+            profileController: _profileController,
+          ),
           const MealScreen(),
           const ExerciseScreen(),
           const ProfileScreen(),
@@ -80,8 +126,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
 class HomeScreenContent extends StatelessWidget {
   final HomeController controller;
+  final ProfileController profileController;
 
-  const HomeScreenContent({super.key, required this.controller});
+  const HomeScreenContent({
+    super.key,
+    required this.controller,
+    required this.profileController,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -194,7 +245,10 @@ class HomeScreenContent extends StatelessWidget {
   }
 
   Widget _buildWaterIntake(BuildContext context) {
-    final filledGlasses = controller.waterIntake ~/ (controller.waterGoal ~/ 8);
+    final double targetWater = profileController.targetWater;
+    final double currentWater = profileController.currentWater;
+    final double waterPerGlass = targetWater / 8;
+    final int filledGlasses = (currentWater / waterPerGlass).floor().clamp(0, 8);
     final totalGlasses = 8;
     final userId = FirebaseAuth.instance.currentUser?.uid;
 
@@ -208,10 +262,18 @@ class HomeScreenContent extends StatelessWidget {
             children: [
               Text('Bạn đã uống bao nhiêu nước', style: Theme.of(context).bodyText),
               Text(
-                '${controller.waterIntake}/${controller.waterGoal} ml',
+                '${currentWater.round()}/${targetWater.round()} ml',
                 style: Theme.of(context).bodyText.copyWith(color: Colors.blue),
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Mỗi cốc: ${waterPerGlass.round()} ml',
+            style: Theme.of(context).bodyText.copyWith(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
           ),
           const SizedBox(height: 16),
           Container(
@@ -224,7 +286,14 @@ class HomeScreenContent extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: List.generate(
                 totalGlasses,
-                (index) => _buildWaterGlass(context, index, filledGlasses, totalGlasses, userId),
+                (index) => _buildWaterGlass(
+                  context,
+                  index,
+                  filledGlasses,
+                  totalGlasses,
+                  userId,
+                  waterPerGlass,
+                ),
               ),
             ),
           ),
@@ -234,7 +303,13 @@ class HomeScreenContent extends StatelessWidget {
   }
 
   Widget _buildWaterGlass(
-      BuildContext context, int index, int filledGlasses, int totalGlasses, String? userId) {
+    BuildContext context,
+    int index,
+    int filledGlasses,
+    int totalGlasses,
+    String? userId,
+    double waterPerGlass,
+  ) {
     final bool isFilled = index < filledGlasses;
     final bool showAddIcon = index == filledGlasses && filledGlasses < totalGlasses;
 
@@ -242,10 +317,23 @@ class HomeScreenContent extends StatelessWidget {
       onTap: showAddIcon && userId != null
           ? () async {
               try {
-                await controller.updateWaterIntake(userId);
+                await profileController.increaseWater();
+                (context as Element).markNeedsBuild();
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Lỗi: $e')),
+                  SnackBar(content: Text('Lỗi khi thêm nước: $e')),
+                );
+              }
+            }
+          : null,
+      onDoubleTap: isFilled && userId != null
+          ? () async {
+              try {
+                await profileController.decreaseWater();
+                (context as Element).markNeedsBuild();
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Lỗi khi giảm nước: $e')),
                 );
               }
             }
@@ -254,29 +342,21 @@ class HomeScreenContent extends StatelessWidget {
         width: 30,
         height: 40,
         margin: const EdgeInsets.symmetric(horizontal: 2),
-        decoration: BoxDecoration(
-          border: isFilled ? null : Border.all(color: Colors.blue.withOpacity(0.3)),
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(4),
-            topRight: Radius.circular(4),
-            bottomLeft: Radius.circular(2),
-            bottomRight: Radius.circular(2),
-          ),
-        ),
         child: Stack(
           children: [
-            if (isFilled)
-              Positioned.fill(
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(3),
-                    topRight: Radius.circular(3),
-                    bottomLeft: Radius.circular(1),
-                    bottomRight: Radius.circular(1),
-                  ),
-                  child: CustomPaint(painter: WaterGlassPainter()),
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(3),
+                  topRight: Radius.circular(3),
+                  bottomLeft: Radius.circular(1),
+                  bottomRight: Radius.circular(1),
+                ),
+                child: CustomPaint(
+                  painter: WaterGlassPainter(filled: isFilled),
                 ),
               ),
+            ),
             if (showAddIcon)
               Center(
                 child: Container(
@@ -380,6 +460,4 @@ class HomeScreenContent extends StatelessWidget {
       ),
     );
   }
-
-
 }

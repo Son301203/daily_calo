@@ -1,10 +1,9 @@
 import 'package:daily_calo/routes/app_routes.dart';
-import 'package:daily_calo/views/auth/login_screen.dart';
 import 'package:daily_calo/views/screens/profile/changeInfo_screen.dart';
-import 'package:intl/intl.dart';
-import '../../../controllers/profile_controllers.dart';
-import '../../../models/user.dart';
+import 'package:daily_calo/controllers/profile_controllers.dart';
+import 'package:daily_calo/models/user.dart';
 import 'package:flutter/material.dart';
+import 'package:daily_calo/utils/app_color.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -14,12 +13,12 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  int currentWater = 0;
-  late int targetWater;
   UserModel? _profile;
   final ProfileController _controller = ProfileController();
   bool isLoading = true;
-  int stepWater = 150;
+  late double currentWater;
+  late double stepWater;
+  late double targetWater;
 
   @override
   void initState() {
@@ -31,52 +30,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await _controller.loadUserProfile();
     setState(() {
       _profile = _controller.user;
-      targetWater = _controller.calculateWaterIntake();
+      targetWater = _controller.targetWater;
+      currentWater = _controller.currentWater;
+      stepWater = _controller.stepWater;
       isLoading = false;
-      print('ProfileScreen: weightUpdatedAt = ${_profile?.weightUpdatedAt}'); // Debug print
     });
   }
 
-  void _increaseWater() {
-    setState(() {
-      currentWater += stepWater;
-      if (currentWater > targetWater) {
-        currentWater = targetWater;
-      }
-    });
-  }
-
-  void _decreaseWater() {
-    setState(() {
-      currentWater -= stepWater;
-      if (currentWater < 0) {
-        currentWater = 0;
-      }
-    });
-  }
-
-  String _formatWeightUpdateDate(DateTime? date) {
-    if (date == null) return "Chưa cập nhật";
-    final formatter = DateFormat('dd/MM/yyyy HH:mm');
-    return formatter.format(date);
-  }
-
-  double _calculateProgress() {
-    return (currentWater / targetWater).clamp(0.0, 1.0);
-  }
-
-  Widget _buildCircleButton(IconData icon, VoidCallback onPressed) {
+  Widget _buildCircleButton(IconData icon, Future<void> Function() onPressed) {
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppColors.whiteText,
         shape: BoxShape.circle,
         boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+          BoxShadow(
+            color: AppColors.lightText,
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
         ],
       ),
       child: IconButton(
-        icon: Icon(icon, size: 24, color: Colors.black),
-        onPressed: onPressed,
+        icon: Icon(icon, size: 24, color: AppColors.lightText),
+        onPressed: () async {
+          try {
+            await onPressed();
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Lỗi: $e'),
+                  backgroundColor: AppColors.error,
+                ),
+              );
+            }
+          }
+        },
       ),
     );
   }
@@ -125,8 +114,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
+                backgroundColor: AppColors.success,
+                foregroundColor: AppColors.whiteText,
               ),
               onPressed: () async {
                 final double? height = double.tryParse(heightController.text);
@@ -150,7 +139,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Đã cập nhật thông tin thành công'),
-                          backgroundColor: Colors.green,
+                          backgroundColor: AppColors.success,
                         ),
                       );
                     }
@@ -159,7 +148,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Lỗi khi cập nhật: $e'),
-                          backgroundColor: Colors.red,
+                          backgroundColor: AppColors.error,
                         ),
                       );
                     }
@@ -168,7 +157,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Vui lòng nhập thông tin hợp lệ'),
-                      backgroundColor: Colors.red,
+                      backgroundColor: AppColors.error,
                     ),
                   );
                 }
@@ -181,68 +170,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showEditWaterStepDialog(BuildContext context) {
-    final TextEditingController stepController = TextEditingController(
-      text: stepWater.toString(),
-    );
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Chỉnh lượng nước mỗi lần cộng/trừ'),
-          content: TextField(
-            controller: stepController,
-            decoration: const InputDecoration(
-              labelText: 'Đơn vị ml',
-              hintText: 'VD: 150, 200...',
-            ),
-            keyboardType: TextInputType.number,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Hủy'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-              onPressed: () {
-                final int? newStep = int.tryParse(stepController.text);
-                if (newStep != null && newStep > 0) {
-                  setState(() {
-                    stepWater = newStep;
-                  });
-                  Navigator.of(context).pop();
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Vui lòng nhập giá trị hợp lệ (> 0)'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Lưu'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: AppColors.primary,
       appBar: AppBar(
-        backgroundColor: Colors.green,
+        backgroundColor: AppColors.primary,
         title: const Text(
           "Thông tin và cài đặt",
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: AppColors.whiteText),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings, color: Colors.white),
+            icon: const Icon(Icons.settings, color: AppColors.whiteText),
             onPressed: () {
               if (_profile != null) {
                 Navigator.of(context).push(
@@ -254,7 +194,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('User chưa sẵn sàng.'),
-                    backgroundColor: Colors.red,
+                    backgroundColor: AppColors.error,
                   ),
                 );
               }
@@ -269,8 +209,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   _buildProfileHeader(),
                   const SizedBox(height: 16),
-                  _buildPremiumBanner(),
-                  const SizedBox(height: 16),
                   _buildBMISection(context),
                   const SizedBox(height: 16),
                   _buildWaterIntakeSection(context),
@@ -282,30 +220,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildProfileHeader() {
     return Container(
-      color: Colors.green,
+      color: AppColors.primary,
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
           CircleAvatar(
             radius: 30,
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.whiteText,
             child: Text(
               _profile?.name.isNotEmpty == true ? _profile!.name[0] : "U",
-              style: const TextStyle(fontSize: 30, color: Colors.green),
+              style: const TextStyle(fontSize: 30, color: AppColors.success),
             ),
           ),
           const SizedBox(width: 16),
           Text(
             _profile?.name ?? "Người dùng",
             style: const TextStyle(
-              color: Colors.white,
+              color: AppColors.whiteText,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
           const Spacer(),
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
+            icon: const Icon(Icons.logout, color: AppColors.whiteText),
             onPressed: () {
               _controller.signOut();
               ScaffoldMessenger.of(context).showSnackBar(
@@ -319,45 +257,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildPremiumBanner() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Colors.orange, Colors.deepOrange],
-        ),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.key_off_sharp, color: Colors.white, size: 40),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  "Gói Premium",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  "Trải nghiệm không quảng cáo và sử dụng đầy đủ các tính năng nâng cao.",
-                  style: TextStyle(color: Colors.white),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildBMISection(BuildContext context) {
     final bmi = _controller.calculateBMI();
 
@@ -365,7 +264,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.whiteText,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -403,7 +302,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       bmi > 0 ? bmi.toStringAsFixed(1) : "---",
                       style: const TextStyle(
                         fontSize: 20,
-                        color: Colors.red,
+                        color: AppColors.error,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -419,16 +318,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const Icon(
                           Icons.access_time,
                           size: 16,
-                          color: Colors.grey,
+                          color: AppColors.lightTextSecondary,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           _profile?.weightUpdatedAt != null
-                              ? '${_formatWeightUpdateDate(_profile!.weightUpdatedAt)}'
+                              ? '${_profile!.weightUpdatedAt!.day}/${_profile!.weightUpdatedAt!.month}/${_profile!.weightUpdatedAt!.year}'
                               : 'Chưa có ngày cập nhật cân nặng',
                           style: const TextStyle(
                             fontSize: 14,
-                            color: Colors.grey,
+                            color: AppColors.lightTextSecondary,
                           ),
                         ),
                       ],
@@ -436,7 +335,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 4),
                     const Text(
                       "Ngày cập nhật cân nặng",
-                      style: TextStyle(fontSize: 14, color: Colors.orange),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.lightTextSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -445,7 +347,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 12),
           Divider(
-            color: Colors.black26,
+            color: AppColors.lightText,
             thickness: 1,
             height: 20,
             endIndent: MediaQuery.of(context).size.width * 0.1,
@@ -466,7 +368,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 4),
                     const Text(
                       "Chiều cao",
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(color: AppColors.lightTextSecondary),
                     ),
                   ],
                 ),
@@ -484,7 +386,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 4),
                     const Text(
                       "Cân nặng tốt",
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(color: AppColors.lightTextSecondary),
                     ),
                   ],
                 ),
@@ -501,7 +403,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.whiteText,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -513,10 +415,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const Text(
                 "Bạn nên uống bao nhiêu nước",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              IconButton(
-                icon: const Icon(Icons.more_vert),
-                onPressed: () => _showEditWaterStepDialog(context),
               ),
             ],
           ),
@@ -532,28 +430,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          "$targetWater",
+                          "${_controller.targetWater.round()}",
                           style: const TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
-                            color: Colors.red,
+                            color: AppColors.error,
                           ),
                         ),
                         const SizedBox(width: 4),
                         const Text(
                           "ml",
-                          style: TextStyle(fontSize: 20, color: Colors.black),
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: AppColors.lightText,
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
                     const Text(
                       "Lượng nước bạn cần uống",
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(color: AppColors.lightTextSecondary),
                     ),
                     const SizedBox(height: 16),
                     Divider(
-                      color: Colors.black26,
+                      color: AppColors.lightText,
                       thickness: 1,
                       height: 20,
                       endIndent: MediaQuery.of(context).size.width * 0.1,
@@ -561,26 +462,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     Row(
                       children: const [
-                        Icon(Icons.access_time, size: 20, color: Colors.grey),
+                        Icon(
+                          Icons.access_time,
+                          size: 20,
+                          color: AppColors.lightTextSecondary,
+                        ),
                         SizedBox(width: 8),
                         Text(
                           "Lần cuối cùng",
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: const [
-                        Icon(
-                          Icons.notifications_off,
-                          size: 20,
-                          color: Colors.grey,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          "Bật tính năng thông báo",
-                          style: TextStyle(color: Colors.orange),
+                          style: TextStyle(color: AppColors.lightTextSecondary),
                         ),
                       ],
                     ),
@@ -596,9 +486,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           Column(
                             children: [
-                              _buildCircleButton(Icons.add, _increaseWater),
+                              _buildCircleButton(Icons.add, () async {
+                                await _controller.increaseWater();
+                                setState(() {}); // Refresh UI
+                              }),
                               const SizedBox(height: 16),
-                              _buildCircleButton(Icons.remove, _decreaseWater),
+                              _buildCircleButton(Icons.remove, () async {
+                                await _controller.decreaseWater();
+                                setState(() {}); // Refresh UI
+                              }),
                             ],
                           ),
                           const SizedBox(width: 12),
@@ -607,16 +503,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             height: 120,
                             clipBehavior: Clip.hardEdge,
                             decoration: BoxDecoration(
-                              color: Colors.grey[300],
+                              color: AppColors.whiteText,
                               borderRadius: BorderRadius.circular(30),
                             ),
                             child: Stack(
                               alignment: Alignment.bottomCenter,
                               children: [
                                 FractionallySizedBox(
-                                  heightFactor: _calculateProgress() == 0
-                                      ? 0.05
-                                      : _calculateProgress(),
+                                  heightFactor:
+                                      _controller.calculateProgress() == 0
+                                          ? 0.05
+                                          : _controller.calculateProgress(),
                                   child: Container(
                                     decoration: BoxDecoration(
                                       color: const Color.fromARGB(
@@ -636,13 +533,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.black54,
+                                      color: AppColors.lightText,
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
-                                      "${(_calculateProgress() * 100).round()}%",
+                                      "${(_controller.calculateProgress() * 100).round()}%",
                                       style: const TextStyle(
-                                        color: Colors.white,
+                                        color: AppColors.whiteText,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 12,
                                       ),
@@ -661,7 +558,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Column(
                             children: [
                               Text(
-                                "$currentWater ml",
+                                "${_controller.currentWater.round()} ml",
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -669,7 +566,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               const Text(
                                 "Đã uống",
-                                style: TextStyle(color: Colors.grey),
+                                style: TextStyle(
+                                  color: AppColors.lightTextSecondary,
+                                ),
                               ),
                             ],
                           ),
