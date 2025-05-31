@@ -258,4 +258,10 @@ class HomeController {
     // Update the Firestore document with the modified exercise_ids array
     await dateCollection.doc(doc.id).update({'exercise_id': exerciseIds});
   }
+
+  Stream<int> getTotalCaloriesBurned(String userId) {
+    return getExercisesForCurrentDate(userId).map((exercises) {
+      return exercises.fold(0, (sum, exercise) => sum + exercise.kcal);
+    });
+  }
 }
