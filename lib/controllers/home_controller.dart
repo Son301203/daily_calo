@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'package:async/async.dart'; 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:daily_calo/models/health.dart';
 import 'package:daily_calo/models/exercise.dart';
@@ -30,7 +30,7 @@ class HomeController {
   final CollectionReference _mealCollection = FirebaseFirestore.instance.collection('Meals');
   final String? _userId;
   StreamSubscription<DocumentSnapshot>? _weightSubscription;
-  StreamSubscription<int>? _caloriesBurnedSubscription;
+  StreamSubscription<Map<String, int>>? _caloriesSubscription; // Updated to handle combined stream
 
   HomeController({
     this.onDateChanged,
@@ -38,13 +38,12 @@ class HomeController {
     this.onWaterIntakeChanged,
     this.onCaloriesNeededChanged,
     String? userId,
-  })  : _service = HealthDailyService(),
-        _userId = userId ?? FirebaseAuth.instance.currentUser?.uid {
+  }) : _service = HealthDailyService(),
+       _userId = userId ?? FirebaseAuth.instance.currentUser?.uid {
     _waterService.addListener(_onWaterServiceChanged);
     _listenToWeightChanges();
-    // Initialize data and then set up subscriptions
     _initializeData().then((_) {
-      _listenToCaloriesBurnedChanges();
+      _listenToCaloriesChanges(); 
     });
   }
 
@@ -73,30 +72,51 @@ class HomeController {
 
   void _listenToWeightChanges() {
     if (_userId == null) return;
-    _weightSubscription = _usersCollection.doc(_userId).snapshots().listen((snapshot) {
-      if (snapshot.exists) {
-        final weight = (snapshot.data() as Map<String, dynamic>)['weight']?.toDouble() ?? _currentWeight;
-        if (weight != _currentWeight) {
-          _currentWeight = weight;
-          _baseCaloriesNeeded = (weight * 24).round();
-          _caloriesNeeded = _baseCaloriesNeeded;
-          onWeightChanged?.call(_currentWeight);
-          onCaloriesNeededChanged?.call(_caloriesNeeded);
+    _weightSubscription = _usersCollection.doc(_userId).snapshots().listen(
+      (snapshot) {
+        if (snapshot.exists) {
+          final weight = (snapshot.data() as Map<String, dynamic>)['weight']?.toDouble() ?? _currentWeight;
+          if (weight != _currentWeight) {
+            _currentWeight = weight;
+            _baseCaloriesNeeded = (weight * 24).round();
+            _caloriesNeeded = _baseCaloriesNeeded; 
+            onWeightChanged?.call(_currentWeight);
+            onCaloriesNeededChanged?.call(_caloriesNeeded);
+          }
         }
-      }
-    }, onError: (error) {
-      print('Error listening to weight changes: $error');
-    });
+      },
+      onError: (error) {
+        print('Error listening to weight changes: $error');
+      },
+    );
   }
 
-  void _listenToCaloriesBurnedChanges() {
+  // Updated method to listen to both calories burned and intake
+  void _listenToCaloriesChanges() {
     if (_userId == null) return;
-    _caloriesBurnedSubscription = getTotalCaloriesBurned(_userId!).listen((totalCaloriesBurned) {
-      _caloriesNeeded = _baseCaloriesNeeded + totalCaloriesBurned;
-      onCaloriesNeededChanged?.call(_caloriesNeeded);
-    }, onError: (error) {
-      print('Error listening to calories burned changes: $error');
-    });
+    final combinedStream = StreamGroup.merge([
+      getTotalCaloriesBurned(_userId!).map((burned) => {'burned': burned}),
+      getTotalCaloriesIntake(_userId!).map((intake) => {'intake': intake}),
+    ]).asBroadcastStream();
+
+    int latestBurned = 0;
+    int latestIntake = 0;
+
+    _caloriesSubscription = combinedStream.listen(
+      (event) {
+        if (event.containsKey('burned')) {
+          latestBurned = event['burned']!;
+        } else if (event.containsKey('intake')) {
+          latestIntake = event['intake']!;
+        }
+        // Update calories needed based on both values
+        _caloriesNeeded = _baseCaloriesNeeded - latestIntake + latestBurned;
+        onCaloriesNeededChanged?.call(_caloriesNeeded);
+      },
+      onError: (error) {
+        print('Error listening to calories changes: $error');
+      },
+    );
   }
 
   void _onWaterServiceChanged() {
@@ -129,7 +149,7 @@ class HomeController {
     _previousWeightDate = DateTime.now();
     _currentWeight = newWeight;
     _baseCaloriesNeeded = (newWeight * 24).round();
-    _caloriesNeeded = _baseCaloriesNeeded;
+    _caloriesNeeded = _baseCaloriesNeeded; 
 
     if (_userId != null) {
       await _usersCollection.doc(_userId).update({
@@ -159,7 +179,9 @@ class HomeController {
   }
 
   Future<double?> showWeightDialog(BuildContext context) async {
-    TextEditingController weightController = TextEditingController(text: _currentWeight.toString());
+    TextEditingController weightController = TextEditingController(
+      text: _currentWeight.toString(),
+    );
     double? newWeight;
 
     await showDialog(
@@ -168,7 +190,9 @@ class HomeController {
         title: const Text('Cập nhật cân nặng'),
         content: TextField(
           controller: weightController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          keyboardType: const TextInputType.numberWithOptions(
+            decimal: true,
+          ),
           decoration: const InputDecoration(
             labelText: 'Cân nặng (kg)',
             border: OutlineInputBorder(),
@@ -187,7 +211,9 @@ class HomeController {
                 Navigator.pop(context);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Vui lòng nhập cân nặng hợp lệ')),
+                  const SnackBar(
+                    content: Text('Vui lòng nhập cân nặng hợp lệ'),
+                  ),
                 );
               }
             },
@@ -203,7 +229,7 @@ class HomeController {
   void dispose() {
     _waterService.removeListener(_onWaterServiceChanged);
     _weightSubscription?.cancel();
-    _caloriesBurnedSubscription?.cancel();
+    _caloriesSubscription?.cancel();
   }
 
   Stream<List<Meal>> getMealForCurrentDate(String userId) {
@@ -226,7 +252,9 @@ class HomeController {
           for (final mealId in mealIds) {
             final doc = await _mealCollection.doc(mealId).get();
             if (doc.exists && doc['user_id'] == userId) {
-              meals.add(Meal.fromMap(mealId, doc.data() as Map<String, dynamic>));
+              meals.add(
+                Meal.fromMap(mealId, doc.data() as Map<String, dynamic>),
+              );
             }
           }
 
@@ -272,7 +300,12 @@ class HomeController {
           for (final exerciseId in exerciseIds) {
             final doc = await _exercisesCollection.doc(exerciseId).get();
             if (doc.exists && doc['user_id'] == userId) {
-              exercises.add(Exercise.fromMap(exerciseId, doc.data() as Map<String, dynamic>));
+              exercises.add(
+                Exercise.fromMap(
+                  exerciseId,
+                  doc.data() as Map<String, dynamic>,
+                ),
+              );
             }
           }
 

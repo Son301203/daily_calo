@@ -505,7 +505,7 @@ class HomeScreenContent extends StatelessWidget {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: meals.length,
-                itemBuilder: (context, index) {
+                itemBuilder: (buildContext, index) {
                   final meal = meals[index];
                   return ListTile(
                     title: Text(meal.title),
