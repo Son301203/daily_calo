@@ -2,14 +2,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:daily_calo/models/health.dart';
 import 'package:daily_calo/models/exercise.dart';
 import 'package:daily_calo/models/meal.dart';
+import 'package:daily_calo/services/water_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class HomeController {
   final HealthDailyService _service;
+  final WaterService _waterService = WaterService();
   late DateTime _today;
-  late int _waterGoal;
-  late int _waterIntake;
   late int _caloriesNeeded;
   late int _weightGoal;
   late double _currentWeight;
@@ -35,8 +35,8 @@ class HomeController {
   }) : _service = HealthDailyService() {
     final data = _service.getInitialData();
     _today = data['today'];
-    _waterGoal = data['waterGoal'];
-    _waterIntake = data['waterIntake'];
+    _waterService.loadWaterData();
+    _waterService.addListener(_onWaterServiceChanged);
     _caloriesNeeded = data['caloriesNeeded'];
     _weightGoal = data['weightGoal'];
     _currentWeight = data['currentWeight'];
@@ -46,10 +46,14 @@ class HomeController {
     _dynamicHeader = _service.getDynamicHeader(_today);
   }
 
+   void _onWaterServiceChanged() {
+    onWaterIntakeChanged?.call(_waterService.waterIntake);
+  }
+
   // Getters
   DateTime get today => _today;
-  int get waterGoal => _waterGoal;
-  int get waterIntake => _waterIntake;
+  int get waterGoal => _waterService.waterGoal;
+  int get waterIntake => _waterService.waterIntake;
   int get caloriesNeeded => _caloriesNeeded;
   int get weightGoal => _weightGoal;
   double get currentWeight => _currentWeight;
@@ -59,38 +63,11 @@ class HomeController {
   String get dynamicHeader => _dynamicHeader;
 
   Future<void> updateWaterIntake(String userId) async {
-    _waterIntake = _service.calculateWaterIntake(
-      _waterIntake,
-      _waterGoal,
-      _waterGoal ~/ 8,
-    );
-    await _updateWaterIntakeInFirestore(userId, _waterIntake);
-    onWaterIntakeChanged?.call(_waterIntake);
-  }
-
-  Future<void> _updateWaterIntakeInFirestore(
-    String userId,
-    int waterIntake,
-  ) async {
-    final currentDate = DateFormat('dd/MM/yy').format(_today);
-    final dateCollection = _usersCollection.doc(userId).collection('Date');
-
-    final querySnapshot =
-        await dateCollection
-            .where('date', isEqualTo: currentDate)
-            .limit(1)
-            .get();
-
-    if (querySnapshot.docs.isNotEmpty) {
-      final docId = querySnapshot.docs.first.id;
-      await dateCollection.doc(docId).update({'quantity_water': waterIntake});
-    } else {
-      await dateCollection.add({
-        'date': currentDate,
-        'exercise_id': [],
-        'meal_id': [],
-        'quantity_water': waterIntake,
-      });
+    try {
+      await _waterService.increaseWaterByStep();
+    } catch (e) {
+      print('Error updating water intake: $e');
+      throw e;
     }
   }
 
@@ -164,6 +141,9 @@ class HomeController {
     );
 
     return newWeight;
+  }
+  void dispose() {
+    _waterService.removeListener(_onWaterServiceChanged);
   }
 
 
