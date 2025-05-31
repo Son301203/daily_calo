@@ -16,9 +16,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   UserModel? _profile;
   final ProfileController _controller = ProfileController();
   bool isLoading = true;
-  late double currentWater;
-  late double stepWater;
-  late double targetWater;
 
   @override
   void initState() {
@@ -30,9 +27,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await _controller.loadUserProfile();
     setState(() {
       _profile = _controller.user;
-      targetWater = _controller.targetWater;
-      currentWater = _controller.currentWater;
-      stepWater = _controller.stepWater;
       isLoading = false;
     });
   }
@@ -189,7 +183,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   MaterialPageRoute(
                     builder: (context) => ChangeInforScreen(user: _profile!),
                   ),
-                );
+                ).then((result) {
+                  if (result != null && result is UserModel) {
+                    setState(() {
+                      _profile = result;
+                      isLoading = false;
+                    });
+                    _loadProfile();
+                  }
+                });
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -321,13 +323,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: AppColors.lightTextSecondary,
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          _profile?.weightUpdatedAt != null
-                              ? '${_profile!.weightUpdatedAt!.day}/${_profile!.weightUpdatedAt!.month}/${_profile!.weightUpdatedAt!.year}'
-                              : 'Chưa có ngày cập nhật cân nặng',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppColors.lightTextSecondary,
+                        Expanded(
+                          child: Text(
+                            _profile?.weightUpdatedAt != null
+                                ? '${_profile!.weightUpdatedAt!.day}/${_profile!.weightUpdatedAt!.month}/${_profile!.weightUpdatedAt!.year}'
+                                : 'Chưa có ngày cập nhật cân nặng',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.lightTextSecondary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -406,15 +411,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
         color: AppColors.whiteText,
         borderRadius: BorderRadius.circular(12),
       ),
+      width: double.infinity,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                "Bạn nên uống bao nhiêu nước",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Expanded(
+                child: Text(
+                  "Bạn nên uống bao nhiêu nước",
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
@@ -429,19 +438,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          "${_controller.targetWater.round()}",
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.error,
+                        Expanded(
+                          child: Text(
+                            "${_controller.targetWater.round()}",
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.error,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 4),
                         const Text(
                           "ml",
                           style: TextStyle(
-                            fontSize: 20,
+                            fontSize: 18,
                             color: AppColors.lightText,
                           ),
                         ),
@@ -461,116 +473,112 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       indent: MediaQuery.of(context).size.width * 0,
                     ),
                     Row(
-                      children: const [
-                        Icon(
+                      children: [
+                        const Icon(
                           Icons.access_time,
-                          size: 20,
+                          size: 16,
                           color: AppColors.lightTextSecondary,
                         ),
-                        SizedBox(width: 8),
-                        Text(
-                          "Lần cuối cùng",
-                          style: TextStyle(color: AppColors.lightTextSecondary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            "Lần cuối cùng",
+                            style: const TextStyle(
+                              color: AppColors.lightTextSecondary,
+                              fontSize: 14,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 12),
               Column(
                 children: [
-                  Column(
+                  Wrap(
+                    spacing: 12,
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      Column(
                         children: [
-                          Column(
-                            children: [
-                              _buildCircleButton(Icons.add, () async {
-                                await _controller.increaseWater();
-                                setState(() {}); // Refresh UI
-                              }),
-                              const SizedBox(height: 16),
-                              _buildCircleButton(Icons.remove, () async {
-                                await _controller.decreaseWater();
-                                setState(() {}); // Refresh UI
-                              }),
-                            ],
-                          ),
-                          const SizedBox(width: 12),
-                          Container(
-                            width: 60,
-                            height: 120,
-                            clipBehavior: Clip.hardEdge,
-                            decoration: BoxDecoration(
-                              color: AppColors.whiteText,
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                            child: Stack(
-                              alignment: Alignment.bottomCenter,
-                              children: [
-                                FractionallySizedBox(
-                                  heightFactor:
-                                      _controller.calculateProgress() == 0
-                                          ? 0.05
-                                          : _controller.calculateProgress(),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: const Color.fromARGB(
-                                        255,
-                                        123,
-                                        168,
-                                        246,
-                                      ),
-                                      borderRadius: BorderRadius.circular(30),
-                                    ),
-                                  ),
-                                ),
-                                Center(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.lightText,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      "${(_controller.calculateProgress() * 100).round()}%",
-                                      style: const TextStyle(
-                                        color: AppColors.whiteText,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          _buildCircleButton(Icons.add, () async {
+                            await _controller.increaseWater();
+                            setState(() {});
+                          }),
+                          const SizedBox(height: 16),
+                          _buildCircleButton(Icons.remove, () async {
+                            await _controller.decreaseWater();
+                            setState(() {});
+                          }),
                         ],
                       ),
-                      const SizedBox(height: 20),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
+                      Container(
+                        width: 60,
+                        height: 120,
+                        clipBehavior: Clip.hardEdge,
+                        decoration: BoxDecoration(
+                          color: AppColors.whiteText,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Stack(
+                          alignment: Alignment.bottomCenter,
+                          children: [
+                            FractionallySizedBox(
+                              heightFactor: _controller.calculateProgress() == 0
+                                  ? 0.05
+                                  : _controller.calculateProgress(),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: const Color.fromARGB(255, 123, 168, 246),
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                              ),
+                            ),
+                            Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.lightText,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  "${(_controller.calculateProgress() * 100).round()}%",
+                                  style: const TextStyle(
+                                    color: AppColors.whiteText,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Column(
                         children: [
-                          Column(
-                            children: [
-                              Text(
-                                "${_controller.currentWater.round()} ml",
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const Text(
-                                "Đã uống",
-                                style: TextStyle(
-                                  color: AppColors.lightTextSecondary,
-                                ),
-                              ),
-                            ],
+                          Text(
+                            "${_controller.currentWater.round()} ml",
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Text(
+                            "Đã uống",
+                            style: TextStyle(
+                              color: AppColors.lightTextSecondary,
+                            ),
                           ),
                         ],
                       ),

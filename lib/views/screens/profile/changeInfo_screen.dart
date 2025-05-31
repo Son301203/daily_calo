@@ -1,7 +1,6 @@
-import 'package:daily_calo/routes/app_routes.dart';
 import 'package:flutter/material.dart';
-import '../../../models/user.dart';
-import '../../../services/user_service.dart';
+import 'package:daily_calo/models/user.dart';
+import 'package:daily_calo/services/user_service.dart';
 
 class ChangeInforScreen extends StatefulWidget {
   final UserModel user;
@@ -60,31 +59,40 @@ class _ChangeInforScreenState extends State<ChangeInforScreen> {
   }
 
   Future<void> _saveChanges() async {
-    final updatedUser = UserModel(
-      uid: widget.user.uid,
-      gmail: widget.user.gmail,
-      name: _name,
-      height: _height,
-      weight: _weight,
-    );
+    try {
+      final updatedUser = UserModel(
+        uid: widget.user.uid,
+        gmail: widget.user.gmail,
+        name: _name,
+        height: _height,
+        weight: _weight,
+      );
 
-    await UserService().updateUserProfile(
-      name: _name,
-      height: _height,
-      weight: _weight,
-    );
+      await UserService().updateUserProfile(
+        name: _name,
+        height: _height,
+        weight: _weight,
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Lưu thành công')),
-    );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lưu thành công')),
+        );
+      }
+      await Future.delayed(const Duration(milliseconds: 1500));
 
-    // Đợi 1.5 giây để người dùng nhìn thấy thông báo rồi mới chuyển màn
-    await Future.delayed(const Duration(milliseconds: 1500));
-
-    Navigator.of(context).pushReplacementNamed(
-      AppRoutes.profile,
-      arguments: updatedUser,  // Nếu màn profile cần dữ liệu mới
-    );
+      // Quay lại ProfileScreen và truyền dữ liệu cập nhật
+      Navigator.pop(context, updatedUser);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi khi lưu: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildInfoTile({
@@ -108,7 +116,8 @@ class _ChangeInforScreenState extends State<ChangeInforScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.of(context).pushReplacementNamed(AppRoutes.profile);
+            // Quay lại ProfileScreen mà không truyền dữ liệu
+            Navigator.pop(context);
           },
         ),
       ),
