@@ -1,40 +1,32 @@
 import 'package:flutter/material.dart';
 
 class WaterGlassPainter extends CustomPainter {
+  final bool filled;
+
+  WaterGlassPainter({required this.filled});
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.blue
-      ..style = PaintingStyle.fill;
+      ..style = PaintingStyle.fill
+      ..color = filled ? const Color.fromARGB(255, 123, 168, 246) : Colors.transparent;
 
-    final path = Path();
+    final borderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.blue.withOpacity(0.3)
+      ..strokeWidth = 1;
 
-    final topWidth = size.width;
-    final bottomWidth = size.width * 0.7;
-    final bottomPadding = (topWidth - bottomWidth) / 2;
-
-    path.moveTo(0, 0);
-    path.lineTo(topWidth, 0);
-    path.lineTo(topWidth - bottomPadding, size.height);
-    path.lineTo(bottomPadding, size.height);
-    path.close();
+    final path = Path()
+      ..moveTo(size.width * 0.25, size.height) 
+      ..lineTo(0, 0) 
+      ..lineTo(size.width, 0) 
+      ..lineTo(size.width * 0.75, size.height) 
+      ..close();
 
     canvas.drawPath(path, paint);
-
-    final highlightPaint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
-      ..style = PaintingStyle.fill;
-
-    final highlightPath = Path();
-    highlightPath.moveTo(size.width * 0.2, 0);
-    highlightPath.lineTo(size.width * 0.4, 0);
-    highlightPath.lineTo(size.width * 0.3, size.height * 0.7);
-    highlightPath.lineTo(size.width * 0.15, size.height * 0.7);
-    highlightPath.close();
-
-    canvas.drawPath(highlightPath, highlightPaint);
+    canvas.drawPath(path, borderPaint);
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
