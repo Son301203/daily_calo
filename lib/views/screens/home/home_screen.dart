@@ -203,9 +203,6 @@ class HomeScreenContent extends StatelessWidget {
            StreamBuilder<int>(
             stream: controller.getTotalCaloriesIntake(userId),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return _buildStatColumn(context, '0', 'đã nạp');
-              }
               if (snapshot.hasError) {
                 return _buildStatColumn(context, 'Lỗi', 'đã nạp');
               }
@@ -221,9 +218,6 @@ class HomeScreenContent extends StatelessWidget {
           StreamBuilder<int>(
             stream: controller.getTotalCaloriesBurned(userId),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return _buildStatColumn(context, '0', 'tiêu hao');
-              }
               if (snapshot.hasError) {
                 return _buildStatColumn(context, 'Lỗi', 'tiêu hao');
               }
@@ -268,7 +262,7 @@ class HomeScreenContent extends StatelessWidget {
   Widget _buildWaterIntake(BuildContext context) {
     final double targetWater = profileController.targetWater;
     final double currentWater = profileController.currentWater;
-    if (targetWater <= 0 || currentWater.isNaN) {
+    if (targetWater < 0 || currentWater.isNaN) {
       return const Padding(
         padding: EdgeInsets.all(16.0),
         child: Text('Dữ liệu nước không hợp lệ'),
