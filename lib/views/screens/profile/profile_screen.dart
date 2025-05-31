@@ -23,12 +23,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadProfile();
   }
 
+  @override
+  void dispose() {
+    // Cleanup khi widget bị dispose
+    super.dispose();
+  }
+
   Future<void> _loadProfile() async {
-    await _controller.loadUserProfile();
-    setState(() {
-      _profile = _controller.user;
-      isLoading = false;
-    });
+    try {
+      await _controller.loadUserProfile();
+      // Kiểm tra mounted trước khi gọi setState
+      if (mounted) {
+        setState(() {
+          _profile = _controller.user;
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi khi tải profile: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildCircleButton(IconData icon, Future<void> Function() onPressed) {
@@ -117,9 +140,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 if (height != null && weight != null && _profile != null) {
                   Navigator.of(context).pop();
-                  setState(() {
-                    isLoading = true;
-                  });
+                  
+                  // Kiểm tra mounted trước khi setState
+                  if (mounted) {
+                    setState(() {
+                      isLoading = true;
+                    });
+                  }
 
                   try {
                     await _controller.updateUserProfile(
@@ -127,7 +154,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       height: height,
                       weight: weight,
                     );
-                    await _loadProfile();
+                    await _loadProfile(); // _loadProfile đã có kiểm tra mounted
 
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -139,6 +166,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     }
                   } catch (e) {
                     if (mounted) {
+                      setState(() {
+                        isLoading = false;
+                      });
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Lỗi khi cập nhật: $e'),
@@ -148,12 +178,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     }
                   }
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Vui lòng nhập thông tin hợp lệ'),
-                      backgroundColor: AppColors.error,
-                    ),
-                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Vui lòng nhập thông tin hợp lệ'),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                  }
                 }
               },
               child: const Text('Cập nhật'),
@@ -184,7 +216,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     builder: (context) => ChangeInforScreen(user: _profile!),
                   ),
                 ).then((result) {
-                  if (result != null && result is UserModel) {
+                  if (result != null && result is UserModel && mounted) {
                     setState(() {
                       _profile = result;
                       isLoading = false;
@@ -193,12 +225,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   }
                 });
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('User chưa sẵn sàng.'),
-                    backgroundColor: AppColors.error,
-                  ),
-                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('User chưa sẵn sàng.'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                }
               }
             },
           ),
@@ -248,10 +282,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             icon: const Icon(Icons.logout, color: AppColors.whiteText),
             onPressed: () {
               _controller.signOut();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đăng xuất thành công')),
-              );
-              Navigator.of(context).pushReplacementNamed(AppRoutes.login);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Đăng xuất thành công')),
+                );
+                Navigator.of(context).pushReplacementNamed(AppRoutes.login);
+              }
             },
           ),
         ],
@@ -440,21 +476,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            "${_controller.targetWater.round()}",
+                            "${_controller.targetWater.round()} ml",
                             style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                               color: AppColors.error,
                             ),
                             overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Text(
-                          "ml",
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: AppColors.lightText,
                           ),
                         ),
                       ],
@@ -472,26 +500,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       endIndent: MediaQuery.of(context).size.width * 0.1,
                       indent: MediaQuery.of(context).size.width * 0,
                     ),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.access_time,
-                          size: 16,
-                          color: AppColors.lightTextSecondary,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            "Lần cuối cùng",
-                            style: const TextStyle(
-                              color: AppColors.lightTextSecondary,
-                              fontSize: 14,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),
@@ -505,12 +513,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           _buildCircleButton(Icons.add, () async {
                             await _controller.increaseWater();
-                            setState(() {});
+                            if (mounted) {
+                              setState(() {});
+                            }
                           }),
                           const SizedBox(height: 16),
                           _buildCircleButton(Icons.remove, () async {
                             await _controller.decreaseWater();
-                            setState(() {});
+                            if (mounted) {
+                              setState(() {});
+                            }
                           }),
                         ],
                       ),
