@@ -437,12 +437,6 @@ class HomeScreenContent extends StatelessWidget {
   return StreamBuilder<List<Exercise>>(
     stream: controller.getExercisesForCurrentDate(userId),
     builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Center(child: CircularProgressIndicator());
-      }
-      if (snapshot.hasError) {
-        return const Center(child: Text('Có lỗi xảy ra'));
-      }
       final exercises = snapshot.data ?? [];
       return Padding(
         padding: const EdgeInsets.all(16.0),
@@ -487,12 +481,6 @@ class HomeScreenContent extends StatelessWidget {
     return StreamBuilder<List<Meal>>(
       stream: controller.getMealForCurrentDate(userId),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return const Center(child: Text('Có lỗi xảy ra'));
-        }
         final meals = snapshot.data ?? [];
         return Padding(
           padding: const EdgeInsets.all(16.0),

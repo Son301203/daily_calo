@@ -90,6 +90,7 @@ class MealManagementController {
     } else {
       await dateCollection.add({
         'date': currentDate,
+        'caloriesNeeded': 0,
         'exercise_id': [],
         'meal_id': [mealId],
         'quantity_water': 0,
