@@ -81,6 +81,7 @@ class ExerciseController {
       // Document doesn't exist, create a new one
       await dateCollection.add({
         'date': currentDate,
+        'caloriesNeeded': 0,
         'exercise_id': [exerciseId],
         'meal_id': [],
         'quantity_water': 0,

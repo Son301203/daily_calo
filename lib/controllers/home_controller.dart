@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:async/async.dart'; 
+import 'package:async/async.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:daily_calo/models/health.dart';
 import 'package:daily_calo/models/exercise.dart';
@@ -25,12 +25,15 @@ class HomeController {
   final ValueChanged<double>? onWeightChanged;
   final ValueChanged<int>? onWaterIntakeChanged;
   final ValueChanged<int>? onCaloriesNeededChanged;
-  final CollectionReference _usersCollection = FirebaseFirestore.instance.collection('Users');
-  final CollectionReference _exercisesCollection = FirebaseFirestore.instance.collection('Exercises');
-  final CollectionReference _mealCollection = FirebaseFirestore.instance.collection('Meals');
+  final CollectionReference _usersCollection = FirebaseFirestore.instance
+      .collection('Users');
+  final CollectionReference _exercisesCollection = FirebaseFirestore.instance
+      .collection('Exercises');
+  final CollectionReference _mealCollection = FirebaseFirestore.instance
+      .collection('Meals');
   final String? _userId;
   StreamSubscription<DocumentSnapshot>? _weightSubscription;
-  StreamSubscription<Map<String, int>>? _caloriesSubscription; // Updated to handle combined stream
+  StreamSubscription<Map<String, int>>? _caloriesSubscription;
 
   HomeController({
     this.onDateChanged,
@@ -43,13 +46,14 @@ class HomeController {
     _waterService.addListener(_onWaterServiceChanged);
     _listenToWeightChanges();
     _initializeData().then((_) {
-      _listenToCaloriesChanges(); 
+      _listenToCaloriesChanges();
     });
   }
 
   Future<void> _initializeData() async {
     final data = await _service.getInitialData();
     _today = data['today'];
+    _caloriesNeeded = 0;
     _waterService.loadWaterData();
     _weightGoal = data['weightGoal'];
     _currentWeight = data['currentWeight'];
@@ -61,9 +65,14 @@ class HomeController {
     if (_userId != null) {
       final userDoc = await _usersCollection.doc(_userId).get();
       if (userDoc.exists) {
-        final weight = (userDoc.data() as Map<String, dynamic>)['weight']?.toDouble() ?? _currentWeight;
+        final weight =
+            (userDoc.data() as Map<String, dynamic>)['weight']?.toDouble() ??
+            _currentWeight;
         _currentWeight = weight;
         _baseCaloriesNeeded = (weight * 24).round();
+        await _getCaloriesNeededDaily(_today);
+      } else {
+        _baseCaloriesNeeded = (_currentWeight * 24).round();
         _caloriesNeeded = _baseCaloriesNeeded;
         onCaloriesNeededChanged?.call(_caloriesNeeded);
       }
@@ -72,51 +81,140 @@ class HomeController {
 
   void _listenToWeightChanges() {
     if (_userId == null) return;
-    _weightSubscription = _usersCollection.doc(_userId).snapshots().listen(
-      (snapshot) {
-        if (snapshot.exists) {
-          final weight = (snapshot.data() as Map<String, dynamic>)['weight']?.toDouble() ?? _currentWeight;
-          if (weight != _currentWeight) {
-            _currentWeight = weight;
-            _baseCaloriesNeeded = (weight * 24).round();
-            _caloriesNeeded = _baseCaloriesNeeded; 
-            onWeightChanged?.call(_currentWeight);
-            onCaloriesNeededChanged?.call(_caloriesNeeded);
-          }
+    _weightSubscription = _usersCollection.doc(_userId).snapshots().listen((
+      snapshot,
+    ) async {
+      if (snapshot.exists) {
+        final weight =
+            (snapshot.data() as Map<String, dynamic>)['weight']?.toDouble() ??
+            _currentWeight;
+        if (weight != _currentWeight) {
+          _currentWeight = weight;
+          _baseCaloriesNeeded = (weight * 24).round();
+          await _getCaloriesNeededDaily(_today);
+          onWeightChanged?.call(_currentWeight);
         }
-      },
-      onError: (error) {
-        print('Error listening to weight changes: $error');
-      },
-    );
+      }
+    });
   }
 
-  // Updated method to listen to both calories burned and intake
   void _listenToCaloriesChanges() {
     if (_userId == null) return;
-    final combinedStream = StreamGroup.merge([
-      getTotalCaloriesBurned(_userId!).map((burned) => {'burned': burned}),
-      getTotalCaloriesIntake(_userId!).map((intake) => {'intake': intake}),
-    ]).asBroadcastStream();
+    final combinedStream =
+        StreamGroup.merge([
+          getTotalCaloriesBurned(_userId!).map((burned) => {'burned': burned}),
+          getTotalCaloriesIntake(_userId!).map((intake) => {'intake': intake}),
+        ]).asBroadcastStream();
 
     int latestBurned = 0;
     int latestIntake = 0;
 
-    _caloriesSubscription = combinedStream.listen(
-      (event) {
-        if (event.containsKey('burned')) {
-          latestBurned = event['burned']!;
-        } else if (event.containsKey('intake')) {
-          latestIntake = event['intake']!;
+    _caloriesSubscription = combinedStream.listen((event) async {
+      if (event.containsKey('burned')) {
+        latestBurned = event['burned']!;
+      } else if (event.containsKey('intake')) {
+        latestIntake = event['intake']!;
+      }
+      _caloriesNeeded = _baseCaloriesNeeded - latestIntake + latestBurned;
+      await _saveCaloriesNeededDaily(_today, _caloriesNeeded);
+      onCaloriesNeededChanged?.call(_caloriesNeeded);
+    });
+  }
+
+  Future<void> _getCaloriesNeededDaily(DateTime date) async {
+    if (_userId == null) return;
+    final currentDate = DateFormat('dd/MM/yy').format(date);
+    final dateCollection = _usersCollection.doc(_userId).collection('Date');
+
+    final querySnapshot =
+        await dateCollection
+            .where('date', isEqualTo: currentDate)
+            .limit(1)
+            .get();
+    int totalIntake = 0;
+    int totalBurned = 0;
+
+    if (querySnapshot.docs.isNotEmpty) {
+      final doc = querySnapshot.docs.first;
+      final mealIds = List<String>.from(doc['meal_id'] ?? []);
+      final exerciseIds = List<String>.from(doc['exercise_id'] ?? []);
+
+      // Calculate total calories intake
+      for (final mealId in mealIds) {
+        final mealDoc = await _mealCollection.doc(mealId).get();
+        if (mealDoc.exists && mealDoc['user_id'] == _userId) {
+          final meal = Meal.fromMap(
+            mealId,
+            mealDoc.data() as Map<String, dynamic>,
+          );
+          totalIntake += meal.calo;
         }
-        // Update calories needed based on both values
-        _caloriesNeeded = _baseCaloriesNeeded - latestIntake + latestBurned;
-        onCaloriesNeededChanged?.call(_caloriesNeeded);
-      },
-      onError: (error) {
-        print('Error listening to calories changes: $error');
-      },
-    );
+      }
+
+      // Calculate total calories burned
+      for (final exerciseId in exerciseIds) {
+        final exerciseDoc = await _exercisesCollection.doc(exerciseId).get();
+        if (exerciseDoc.exists && exerciseDoc['user_id'] == _userId) {
+          final exercise = Exercise.fromMap(
+            exerciseId,
+            exerciseDoc.data() as Map<String, dynamic>,
+          );
+          totalBurned += exercise.kcal;
+        }
+      }
+
+      // Calculate calories needed
+      final calculatedCaloriesNeeded =
+          _baseCaloriesNeeded - totalIntake + totalBurned;
+      _caloriesNeeded = calculatedCaloriesNeeded;
+
+      // Update Firestore if necessary
+      if (doc['caloriesNeeded']?.toInt() != calculatedCaloriesNeeded) {
+        await _saveCaloriesNeededDaily(date, _caloriesNeeded);
+      }
+    } else {
+      // For new or future dates, reset to base calories
+      final now = DateTime.now();
+      final isFutureDate = date.isAfter(DateTime(now.year, now.month, now.day));
+      _caloriesNeeded = _baseCaloriesNeeded;
+      await dateCollection.add({
+        'date': currentDate,
+        'caloriesNeeded': _caloriesNeeded,
+        'meal_id': [],
+        'exercise_id': [],
+        'quantityWater': 0,
+      });
+    }
+    onCaloriesNeededChanged?.call(_caloriesNeeded);
+  }
+
+  Future<void> _saveCaloriesNeededDaily(
+    DateTime date,
+    int caloriesNeeded,
+  ) async {
+    if (_userId == null) return;
+    final currentDate = DateFormat('dd/MM/yy').format(date);
+    final dateCollection = _usersCollection.doc(_userId).collection('Date');
+
+    final querySnapshot =
+        await dateCollection
+            .where('date', isEqualTo: currentDate)
+            .limit(1)
+            .get();
+    if (querySnapshot.docs.isNotEmpty) {
+      final docId = querySnapshot.docs.first.id;
+      await dateCollection.doc(docId).update({
+        'caloriesNeeded': caloriesNeeded,
+      });
+    } else {
+      await dateCollection.add({
+        'date': currentDate,
+        'caloriesNeeded': caloriesNeeded,
+        'meal_id': [],
+        'exercise_id': [],
+        'quantityWater': 0,
+      });
+    }
   }
 
   void _onWaterServiceChanged() {
@@ -139,7 +237,6 @@ class HomeController {
     try {
       await _waterService.increaseWaterByStep();
     } catch (e) {
-      print('Error updating water intake: $e');
       throw e;
     }
   }
@@ -149,23 +246,27 @@ class HomeController {
     _previousWeightDate = DateTime.now();
     _currentWeight = newWeight;
     _baseCaloriesNeeded = (newWeight * 24).round();
-    _caloriesNeeded = _baseCaloriesNeeded; 
+    await _getCaloriesNeededDaily(_today);
 
     if (_userId != null) {
-      await _usersCollection.doc(_userId).update({
-        'weight': newWeight,
-        'weightUpdatedAt': Timestamp.fromDate(DateTime.now()),
-      });
+      try {
+        await _usersCollection.doc(_userId).update({
+          'weight': newWeight,
+          'weightUpdatedAt': Timestamp.fromDate(DateTime.now()),
+        });
+      } catch (e) {
+        throw e;
+      }
     }
 
-    onWeightChanged?.call(newWeight);
-    onCaloriesNeededChanged?.call(_caloriesNeeded);
+    onWeightChanged?.call(_currentWeight);
   }
 
-  void setDate(DateTime date) {
+  void setDate(DateTime date) async {
     _today = date;
     _formattedDate = DateFormat('d \'th\' M').format(_today);
     _dynamicHeader = _service.getDynamicHeader(_today);
+    await _getCaloriesNeededDaily(_today);
     onDateChanged?.call(_today);
   }
 
@@ -186,41 +287,42 @@ class HomeController {
 
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cập nhật cân nặng'),
-        content: TextField(
-          controller: weightController,
-          keyboardType: const TextInputType.numberWithOptions(
-            decimal: true,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Cập nhật cân nặng'),
+            content: TextField(
+              controller: weightController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Cân nặng (kg)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Hủy'),
+              ),
+              TextButton(
+                onPressed: () {
+                  final weight = double.tryParse(weightController.text);
+                  if (weight != null && weight > 0) {
+                    newWeight = weight;
+                    Navigator.pop(context);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Vui lòng nhập cân nặng hợp lệ'),
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Xác nhận'),
+              ),
+            ],
           ),
-          decoration: const InputDecoration(
-            labelText: 'Cân nặng (kg)',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Hủy'),
-          ),
-          TextButton(
-            onPressed: () {
-              final weight = double.tryParse(weightController.text);
-              if (weight != null && weight > 0) {
-                newWeight = weight;
-                Navigator.pop(context);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Vui lòng nhập cân nặng hợp lệ'),
-                  ),
-                );
-              }
-            },
-            child: const Text('Xác nhận'),
-          ),
-        ],
-      ),
     );
 
     return newWeight;
@@ -250,11 +352,15 @@ class HomeController {
 
           final List<Meal> meals = [];
           for (final mealId in mealIds) {
-            final doc = await _mealCollection.doc(mealId).get();
-            if (doc.exists && doc['user_id'] == userId) {
-              meals.add(
-                Meal.fromMap(mealId, doc.data() as Map<String, dynamic>),
-              );
+            try {
+              final doc = await _mealCollection.doc(mealId).get();
+              if (doc.exists && doc['user_id'] == userId) {
+                meals.add(
+                  Meal.fromMap(mealId, doc.data() as Map<String, dynamic>),
+                );
+              }
+            } catch (e) {
+              print('Error fetching meal $mealId: $e');
             }
           }
 
@@ -266,8 +372,11 @@ class HomeController {
     final currentDate = DateFormat('dd/MM/yy').format(_today);
     final dateCollection = _usersCollection.doc(userId).collection('Date');
 
-    final querySnapshot = await dateCollection.where('date', isEqualTo: currentDate).limit(1).get();
-
+    final querySnapshot =
+        await dateCollection
+            .where('date', isEqualTo: currentDate)
+            .limit(1)
+            .get();
     if (querySnapshot.docs.isEmpty) return;
 
     final doc = querySnapshot.docs.first;
@@ -276,8 +385,8 @@ class HomeController {
     if (index < 0 || index >= mealIds.length) return;
 
     mealIds.removeAt(index);
-
     await dateCollection.doc(doc.id).update({'meal_id': mealIds});
+    await _getCaloriesNeededDaily(_today);
   }
 
   Stream<List<Exercise>> getExercisesForCurrentDate(String userId) {
@@ -298,14 +407,18 @@ class HomeController {
 
           final List<Exercise> exercises = [];
           for (final exerciseId in exerciseIds) {
-            final doc = await _exercisesCollection.doc(exerciseId).get();
-            if (doc.exists && doc['user_id'] == userId) {
-              exercises.add(
-                Exercise.fromMap(
-                  exerciseId,
-                  doc.data() as Map<String, dynamic>,
-                ),
-              );
+            try {
+              final doc = await _exercisesCollection.doc(exerciseId).get();
+              if (doc.exists && doc['user_id'] == userId) {
+                exercises.add(
+                  Exercise.fromMap(
+                    exerciseId,
+                    doc.data() as Map<String, dynamic>,
+                  ),
+                );
+              }
+            } catch (e) {
+              print('Error fetching exercise $exerciseId: $e');
             }
           }
 
@@ -317,8 +430,11 @@ class HomeController {
     final currentDate = DateFormat('dd/MM/yy').format(_today);
     final dateCollection = _usersCollection.doc(userId).collection('Date');
 
-    final querySnapshot = await dateCollection.where('date', isEqualTo: currentDate).limit(1).get();
-
+    final querySnapshot =
+        await dateCollection
+            .where('date', isEqualTo: currentDate)
+            .limit(1)
+            .get();
     if (querySnapshot.docs.isEmpty) return;
 
     final doc = querySnapshot.docs.first;
@@ -327,8 +443,8 @@ class HomeController {
     if (index < 0 || index >= exerciseIds.length) return;
 
     exerciseIds.removeAt(index);
-
     await dateCollection.doc(doc.id).update({'exercise_id': exerciseIds});
+    await _getCaloriesNeededDaily(_today);
   }
 
   Stream<int> getTotalCaloriesBurned(String userId) {
