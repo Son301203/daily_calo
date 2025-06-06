@@ -235,9 +235,40 @@ class HomeController {
 
   Future<void> updateWaterIntake(String userId) async {
     try {
-      await _waterService.increaseWaterByStep();
-    } catch (e) {
-      throw e;
+      await _waterService.increaseWaterByStep(date: _today);
+    } catch (e, stackTrace) {
+      print('Error increasing water intake: $e');
+      print('Stack trace: $stackTrace');
+      rethrow;
+    }
+  }
+
+  Future<void> decreaseWaterIntake(String userId) async {
+    try {
+      await _waterService.decreaseWaterByStep(date: _today);
+    } catch (e, stackTrace) {
+      print('Error decreasing water intake: $e');
+      print('Stack trace: $stackTrace');
+      rethrow;
+    }
+  }
+  Future<void> increaseWaterIntake(String userId) async {
+    try {
+      await _waterService.increaseWaterByStep(date: _today);
+    } catch (e, stackTrace) {
+      print('Error increasing water intake: $e');
+      print('Stack trace: $stackTrace');
+      rethrow;
+    }
+  }
+
+  Future<void> resetWaterIntake(String userId) async {
+    try {
+      await _waterService.resetWaterIntake(date: _today);
+    } catch (e, stackTrace) {
+      print('Error resetting water intake: $e');
+      print('Stack trace: $stackTrace');
+      rethrow;
     }
   }
 
@@ -262,13 +293,15 @@ class HomeController {
     onWeightChanged?.call(_currentWeight);
   }
 
-  void setDate(DateTime date) async {
-    _today = date;
-    _formattedDate = DateFormat('d \'th\' M').format(_today);
-    _dynamicHeader = _service.getDynamicHeader(_today);
-    await _getCaloriesNeededDaily(_today);
-    onDateChanged?.call(_today);
-  }
+void setDate(DateTime date) async {
+  _today = date;
+  _formattedDate = DateFormat('d \'th\' M').format(_today);
+  _dynamicHeader = _service.getDynamicHeader(_today);
+  await _getCaloriesNeededDaily(_today);
+  // Thêm dòng này để load lại lượng nước theo ngày mới
+  await _waterService.loadWaterData(date: _today);
+  onDateChanged?.call(_today);
+}
 
   Future<DateTime?> showDatePickerDialog(BuildContext context) async {
     return showDatePicker(

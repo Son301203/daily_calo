@@ -14,6 +14,7 @@ class WaterService extends ChangeNotifier {
   int _waterIntake = 0;
   int _waterGoal = 1950;
   double _stepWater = 0; 
+  DateTime _currentDate = DateTime.now();
 
   // Getters
   int get waterIntake => _waterIntake;
@@ -34,13 +35,15 @@ class WaterService extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Load dữ liệu nước từ Firestore cho ngày hiện tại
-  Future<void> loadWaterData() async {
+  // Load dữ liệu nước từ Firestore cho ngày cụ thể
+  Future<void> loadWaterData({DateTime? date}) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      final currentDate = DateFormat('dd/MM/yy').format(DateTime.now());
+      final targetDate = date ?? DateTime.now();
+      _currentDate = targetDate;
+      final currentDate = DateFormat('dd/MM/yy').format(targetDate);
       final dateCollection = _usersCollection.doc(user.uid).collection('Date');
 
       final querySnapshot = await dateCollection
@@ -49,8 +52,8 @@ class WaterService extends ChangeNotifier {
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
-        final data = querySnapshot.docs.first.data() as Map<String, dynamic>;
-        _waterIntake = data['quantity_water'] ?? 0;
+        final data = querySnapshot.docs.first.data();
+        _waterIntake = data['quantityWater'] ?? 0;
       } else {
         _waterIntake = 0;
       }
@@ -61,13 +64,14 @@ class WaterService extends ChangeNotifier {
   }
 
   // Cập nhật lượng nước uống lên Firestore
-  Future<void> updateWaterIntake(int newIntake) async {
+  Future<void> updateWaterIntake(int newIntake, {DateTime? date}) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
+      final targetDate = date ?? _currentDate;
       _waterIntake = newIntake;
-      await _updateWaterIntakeInFirestore(user.uid, newIntake);
+      await _updateWaterIntakeInFirestore(user.uid, newIntake, targetDate);
       notifyListeners();
     } catch (e) {
       print('Error updating water intake: $e');
@@ -75,27 +79,38 @@ class WaterService extends ChangeNotifier {
     }
   }
 
-  // Tăng lượng nước theo step (cho home screen)
-  Future<void> increaseWaterByStep() async {
+  // Tăng lượng nước theo step (cho home screen) - 1/8 của mục tiêu
+  Future<void> increaseWaterByStep({DateTime? date}) async {
     final newIntake = _waterIntake + (_waterGoal ~/ 8);
     final clampedIntake = newIntake > _waterGoal ? _waterGoal : newIntake;
-    await updateWaterIntake(clampedIntake);
+    await updateWaterIntake(clampedIntake, date: date);
+  }
+
+  // Giảm lượng nước theo step (cho home screen) - 1/8 của mục tiêu
+  Future<void> decreaseWaterByStep({DateTime? date}) async {
+    final newIntake = _waterIntake - (_waterGoal ~/ 8);
+    final clampedIntake = newIntake < 0 ? 0 : newIntake;
+    await updateWaterIntake(clampedIntake, date: date);
   }
 
   // Tăng lượng nước theo stepWater (cho profile screen)
-  Future<void> increaseWaterByCustomStep() async {
+  Future<void> increaseWaterByCustomStep({DateTime? date}) async {
     final newIntake = _waterIntake + _stepWater.toInt();
     final clampedIntake = newIntake > _waterGoal ? _waterGoal : newIntake;
-    await updateWaterIntake(clampedIntake);
+    await updateWaterIntake(clampedIntake, date: date);
   }
 
   // Giảm lượng nước theo stepWater (cho profile screen)
-  Future<void> decreaseWaterByCustomStep() async {
+  Future<void> decreaseWaterByCustomStep({DateTime? date}) async {
     final newIntake = _waterIntake - _stepWater.toInt();
     final clampedIntake = newIntake < 0 ? 0 : newIntake;
-    await updateWaterIntake(clampedIntake);
+    await updateWaterIntake(clampedIntake, date: date);
   }
 
+  // Reset lượng nước về 0
+  Future<void> resetWaterIntake({DateTime? date}) async {
+    await updateWaterIntake(0, date: date);
+  }
   // Cập nhật mục tiêu nước dựa trên cân nặng
   void updateWaterGoalByWeight(double weight) {
     _waterGoal = (weight * 30).round(); // 30ml/kg
@@ -103,8 +118,14 @@ class WaterService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _updateWaterIntakeInFirestore(String userId, int waterIntake) async {
-    final currentDate = DateFormat('dd/MM/yy').format(DateTime.now());
+  // Method để set ngày hiện tại (được gọi từ HomeController)
+  void setCurrentDate(DateTime date) {
+    _currentDate = date;
+    loadWaterData(date: date);
+  }
+
+  Future<void> _updateWaterIntakeInFirestore(String userId, int waterIntake, DateTime date) async {
+    final currentDate = DateFormat('dd/MM/yy').format(date);
     final dateCollection = _usersCollection.doc(userId).collection('Date');
 
     final querySnapshot = await dateCollection
@@ -113,14 +134,16 @@ class WaterService extends ChangeNotifier {
         .get();
 
     if (querySnapshot.docs.isNotEmpty) {
+      // Document đã tồn tại, chỉ update quantityWater
       final docId = querySnapshot.docs.first.id;
-      await dateCollection.doc(docId).update({'quantity_water': waterIntake});
+      await dateCollection.doc(docId).update({'quantityWater': waterIntake});
     } else {
       await dateCollection.add({
         'date': currentDate,
+        'caloriesNeeded': 0,
         'exercise_id': [],
         'meal_id': [],
-        'quantity_water': waterIntake,
+        'quantityWater': waterIntake,
       });
     }
   }
@@ -130,6 +153,7 @@ class WaterService extends ChangeNotifier {
     _waterIntake = 0;
     _waterGoal = 1950;
     _stepWater = _waterGoal / 8; 
+    _currentDate = DateTime.now();
     notifyListeners();
   }
 }

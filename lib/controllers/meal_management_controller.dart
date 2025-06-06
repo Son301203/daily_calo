@@ -93,7 +93,7 @@ class MealManagementController {
         'caloriesNeeded': 0,
         'exercise_id': [],
         'meal_id': [mealId],
-        'quantity_water': 0,
+        'quantityWater': 0,
       });
     }
   }

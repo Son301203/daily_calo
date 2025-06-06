@@ -7,14 +7,14 @@ import 'package:daily_calo/utils/app_color.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
-
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  late final ProfileController _controller;
+
   UserModel? _profile;
-  final ProfileController _controller = ProfileController();
   bool isLoading = true;
   late double currentWater;
   late double stepWater;
@@ -23,6 +23,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _controller = ProfileController(); // lấy singleton
     _loadProfile();
   }
 
@@ -72,10 +73,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _showEditDialog(BuildContext context) {
     final TextEditingController heightController = TextEditingController(
-      text: _profile?.height?.toString() ?? '',
+      text: _profile?.height.toString() ?? '',
     );
     final TextEditingController weightController = TextEditingController(
-      text: _profile?.weight?.toString() ?? '',
+      text: _profile?.weight.toString() ?? '',
     );
 
     showDialog(
@@ -183,13 +184,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings, color: AppColors.whiteText),
-            onPressed: () {
+            onPressed: () async {
               if (_profile != null) {
-                Navigator.of(context).push(
+                await Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => ChangeInforScreen(user: _profile!),
                   ),
                 );
+                // Sau khi pop về, load lại dữ liệu
+                await _loadProfile();
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -202,19 +205,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildProfileHeader(),
-                  const SizedBox(height: 16),
-                  _buildBMISection(context),
-                  const SizedBox(height: 16),
-                  _buildWaterIntakeSection(context),
-                ],
+      body:
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _buildProfileHeader(),
+                    const SizedBox(height: 16),
+                    _buildBMISection(context),
+                    const SizedBox(height: 16),
+                    _buildWaterIntakeSection(context),
+                  ],
+                ),
               ),
-            ),
     );
   }
 
@@ -487,13 +491,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Column(
                             children: [
                               _buildCircleButton(Icons.add, () async {
-                                await _controller.increaseWater();
-                                setState(() {}); // Refresh UI
+                                await _controller.increaseWaterIntake(
+                                  _profile?.uid ?? '',
+                                );
+                                setState(() {});
                               }),
                               const SizedBox(height: 16),
                               _buildCircleButton(Icons.remove, () async {
-                                await _controller.decreaseWater();
-                                setState(() {}); // Refresh UI
+                                await _controller.decreaseWaterIntake(
+                                  _profile?.uid ?? '',
+                                );
+                                setState(() {});
                               }),
                             ],
                           ),

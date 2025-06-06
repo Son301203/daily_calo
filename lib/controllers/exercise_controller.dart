@@ -84,7 +84,7 @@ class ExerciseController {
         'caloriesNeeded': 0,
         'exercise_id': [exerciseId],
         'meal_id': [],
-        'quantity_water': 0,
+        'quantityWater': 0,
       });
     }
   }
