@@ -63,6 +63,29 @@ class UserService {
     }
   }
 
+  Future<void> changePasswordWithReauth({
+  required String oldPassword,
+  required String newPassword,
+}) async {
+  final user = _auth.currentUser;
+  if (user == null || user.email == null) {
+    throw Exception('Chưa đăng nhập');
+  }
+
+  try {
+    final credential = EmailAuthProvider.credential(
+      email: user.email!,
+      password: oldPassword,
+    );
+    await user.reauthenticateWithCredential(credential);
+    await user.updatePassword(newPassword);
+  } on FirebaseAuthException catch (e) {
+    throw Exception(e.message ?? 'Lỗi Firebase khi đổi mật khẩu');
+  } catch (e) {
+    throw Exception('Lỗi không xác định khi đổi mật khẩu');
+  }
+}
+
   Future<Map<String, dynamic>?> fetchCurrentUserWithWeightUpdate() async {
     final currentUser = _auth.currentUser;
     if (currentUser == null) return null;

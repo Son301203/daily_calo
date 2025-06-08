@@ -5,15 +5,24 @@ import 'package:daily_calo/services/user_service.dart';
 import 'package:daily_calo/services/water_service.dart';
 
 class ProfileController with ChangeNotifier {
+  static final ProfileController _instance = ProfileController._internal();
+  factory ProfileController() => _instance;
+  ProfileController._internal();
   final UserService _userService = UserService();
+  DateTime _today = DateTime.now();
+
+  DateTime get today => _today;
+
   final WaterService _waterService = WaterService();
 
   UserModel? user;
   DateTime? weightUpdatedAt;
   bool isLoading = false;
 
-  ProfileController() {
-    _waterService.addListener(_onWaterServiceChanged);
+  void setDate(DateTime date) async {
+    _today = date;
+    await _waterService.loadWaterData(date: _today);
+    notifyListeners();
   }
 
   void _onWaterServiceChanged() {
@@ -63,10 +72,7 @@ class ProfileController with ChangeNotifier {
       user = null;
       weightUpdatedAt = null;
     }
-
-    // Load dữ liệu nước hiện tại
-    await _waterService.loadWaterData();
-
+    await _waterService.loadWaterData(date: _today);
     isLoading = false;
     notifyListeners();
   }
@@ -94,7 +100,6 @@ class ProfileController with ChangeNotifier {
       );
 
       await loadUserProfile();
-
     } catch (e) {
       throw Exception('Lỗi khi cập nhật hồ sơ: $e');
     } finally {
@@ -103,24 +108,14 @@ class ProfileController with ChangeNotifier {
     }
   }
 
-  // Tăng lượng nước
-  Future<void> increaseWater() async {
-    try {
-      await _waterService.increaseWaterByCustomStep();
-    } catch (e) {
-      print('Error increasing water: $e');
-      throw e;
-    }
+  Future<void> decreaseWaterIntake(String userId) async {
+    await _waterService.decreaseWaterByCustomStep(date: _today);
+    notifyListeners();
   }
 
-  // Giảm lượng nước
-  Future<void> decreaseWater() async {
-    try {
-      await _waterService.decreaseWaterByCustomStep();
-    } catch (e) {
-      print('Error decreasing water: $e');
-      throw e;
-    }
+  Future<void> increaseWaterIntake(String userId) async {
+    await _waterService.increaseWaterByCustomStep(date: _today);
+    notifyListeners();
   }
 
   // Định dạng ngày cập nhật cân nặng
