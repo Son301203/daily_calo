@@ -38,6 +38,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
+// tạo hiệu ứng nút tròn 
   Widget _buildCircleButton(IconData icon, Future<void> Function() onPressed) {
     return Container(
       decoration: const BoxDecoration(
@@ -71,105 +72,109 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+// hộp thoại chỉnh sửa thông tin người dùng
   void _showEditDialog(BuildContext context) {
-    final TextEditingController heightController = TextEditingController(
-      text: _profile?.height.toString() ?? '',
-    );
-    final TextEditingController weightController = TextEditingController(
-      text: _profile?.weight.toString() ?? '',
-    );
+  final outerContext = context; // 👈 lưu context ngoài dialog
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Cập nhật chỉ số cơ thể'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: heightController,
-                  decoration: const InputDecoration(
-                    labelText: 'Chiều cao (cm)',
-                    hintText: 'Nhập chiều cao của bạn',
-                  ),
-                  keyboardType: TextInputType.number,
+  final TextEditingController heightController = TextEditingController(
+    text: _profile?.height.toString() ?? '',
+  );
+  final TextEditingController weightController = TextEditingController(
+    text: _profile?.weight.toString() ?? '',
+  );
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text('Cập nhật chỉ số cơ thể'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: heightController,
+                decoration: const InputDecoration(
+                  labelText: 'Chiều cao (cm)',
+                  hintText: 'Nhập chiều cao của bạn',
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: weightController,
-                  decoration: const InputDecoration(
-                    labelText: 'Cân nặng (kg)',
-                    hintText: 'Nhập cân nặng của bạn',
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Hủy'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.success,
-                foregroundColor: AppColors.whiteText,
+                keyboardType: TextInputType.number,
               ),
-              onPressed: () async {
-                final double? height = double.tryParse(heightController.text);
-                final double? weight = double.tryParse(weightController.text);
-
-                if (height != null && weight != null && _profile != null) {
-                  Navigator.of(context).pop();
-                  setState(() {
-                    isLoading = true;
-                  });
-
-                  try {
-                    await _controller.updateUserProfile(
-                      name: _profile!.name,
-                      height: height,
-                      weight: weight,
-                    );
-                    await _loadProfile();
-
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Đã cập nhật thông tin thành công'),
-                          backgroundColor: AppColors.success,
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Lỗi khi cập nhật: $e'),
-                          backgroundColor: AppColors.error,
-                        ),
-                      );
-                    }
-                  }
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Vui lòng nhập thông tin hợp lệ'),
-                      backgroundColor: AppColors.error,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Cập nhật'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: weightController,
+                decoration: const InputDecoration(
+                  labelText: 'Cân nặng (kg)',
+                  hintText: 'Nhập cân nặng của bạn',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(outerContext).pop(),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.success,
+              foregroundColor: AppColors.whiteText,
             ),
-          ],
-        );
-      },
-    );
-  }
+            onPressed: () async {
+              final double? height = double.tryParse(heightController.text);
+              final double? weight = double.tryParse(weightController.text);
+
+              if (height != null && weight != null && _profile != null) {
+                Navigator.of(outerContext).pop(); // dùng context ngoài dialog
+                setState(() {
+                  isLoading = true;
+                });
+
+                try {
+                  await _controller.updateUserProfile(
+                    name: _profile!.name,
+                    height: height,
+                    weight: weight,
+                  );
+                  await _loadProfile();
+
+                  if (mounted) {
+                    ScaffoldMessenger.of(outerContext).showSnackBar(
+                      const SnackBar(
+                        content: Text('Đã cập nhật thông tin thành công'),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(outerContext).showSnackBar(
+                      SnackBar(
+                        content: Text('Lỗi khi cập nhật: $e'),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                  }
+                }
+              } else {
+                ScaffoldMessenger.of(outerContext).showSnackBar(
+                  const SnackBar(
+                    content: Text('Vui lòng nhập thông tin hợp lệ'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              }
+            },
+            child: const Text('Cập nhật'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -222,6 +227,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+// Xây dựng phần đầu trang hồ sơ
   Widget _buildProfileHeader() {
     return Container(
       color: AppColors.primary,
@@ -261,6 +267,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+// Xây dựng phần chỉ số BMI
   Widget _buildBMISection(BuildContext context) {
     final bmi = _controller.calculateBMI();
 
@@ -402,6 +409,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+
+// Xây dựng phần lượng nước cần uống
   Widget _buildWaterIntakeSection(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),

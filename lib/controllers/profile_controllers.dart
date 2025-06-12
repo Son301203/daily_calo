@@ -50,12 +50,6 @@ class ProfileController with ChangeNotifier {
     return userWeight / (heightInMeters * heightInMeters);
   }
 
-  // Tính lượng nước cần uống (mL)
-  int calculateWaterIntake() {
-    if (user == null) return 0;
-    return (userWeight * 30).round(); // 30ml/kg
-  }
-
   // Load dữ liệu hồ sơ
   Future<void> loadUserProfile() async {
     isLoading = true;

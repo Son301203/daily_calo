@@ -36,8 +36,7 @@ class _HomeScreenState extends State<HomeScreen>
       onDateChanged: (_) => setState(() {}),
       onWeightChanged: (_) => setState(() {}),
       onWaterIntakeChanged: (_) => setState(() {}),
-      onCaloriesNeededChanged:
-          (value) => setState(() {}), // Handle calories needed updates
+      onCaloriesNeededChanged: (value) => setState(() {}),
       userId: userId,
     );
     _profileController = ProfileController();
@@ -312,7 +311,7 @@ class HomeScreenContent extends StatelessWidget {
         child: Text('Dữ liệu nước không hợp lệ'),
       );
     }
-    final double waterPerGlass = targetWater / 8;
+    final int waterPerGlass = targetWater ~/ 8;
     final int filledGlasses =
         (currentWater / waterPerGlass).clamp(0, 8).floor();
     final totalGlasses = 8;
@@ -376,7 +375,7 @@ class HomeScreenContent extends StatelessWidget {
     int filledGlasses,
     int totalGlasses,
     String? userId,
-    double waterPerGlass,
+    int waterPerGlass,
   ) {
     final bool isFilled = index < filledGlasses;
     final bool showAddIcon =

@@ -233,19 +233,11 @@ class HomeController {
   String get formattedDate => _formattedDate;
   String get dynamicHeader => _dynamicHeader;
 
-  Future<void> updateWaterIntake(String userId) async {
-    try {
-      await _waterService.increaseWaterByStep(date: _today);
-    } catch (e, stackTrace) {
-      print('Error increasing water intake: $e');
-      print('Stack trace: $stackTrace');
-      rethrow;
-    }
-  }
+
 
   Future<void> decreaseWaterIntake(String userId) async {
     try {
-      await _waterService.decreaseWaterByStep(date: _today);
+      await _waterService.decreaseWaterByCustomStep(date: _today);
     } catch (e, stackTrace) {
       print('Error decreasing water intake: $e');
       print('Stack trace: $stackTrace');
@@ -254,7 +246,7 @@ class HomeController {
   }
   Future<void> increaseWaterIntake(String userId) async {
     try {
-      await _waterService.increaseWaterByStep(date: _today);
+      await _waterService.increaseWaterByCustomStep(date: _today);
     } catch (e, stackTrace) {
       print('Error increasing water intake: $e');
       print('Stack trace: $stackTrace');
