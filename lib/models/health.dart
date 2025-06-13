@@ -12,7 +12,6 @@ class HealthDailyService {
       'waterGoal': 1950,
       'waterIntake': 0,
       'caloriesNeeded': 1266,
-      'weightGoal': 50,
       'currentWeight': 56.0,
       'previousWeight': 62.0,
       'previousWeightDate': DateTime(2023, 7, 25),

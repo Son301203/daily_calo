@@ -1,11 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:daily_calo/models/user.dart'
-    as model; // Alias for your User model
 import 'package:daily_calo/routes/app_routes.dart';
 import 'package:daily_calo/utils/app_color.dart';
 import 'package:daily_calo/utils/validators.dart';
-import 'package:firebase_auth/firebase_auth.dart'
-    as auth; // Alias for Firebase Auth
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -32,12 +29,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _errorMessage = null;
       });
       try {
-        auth.UserCredential userCredential = await auth.FirebaseAuth.instance
+        UserCredential userCredential = await FirebaseAuth.instance
             .createUserWithEmailAndPassword(
               email: _emailController.text.trim(),
               password: _passwordController.text.trim(),
             );
-        auth.User? user = userCredential.user;
+        User? user = userCredential.user;
         if (user != null) {
           // Save user data to Firestore
           await FirebaseFirestore.instance
@@ -49,6 +46,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 'height': 0.0,
                 'weight': 0.0,
               });
+
           // Send email verification
           await user.sendEmailVerification();
           Get.snackbar(
@@ -59,7 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           );
           Get.offAllNamed(AppRoutes.login);
         }
-      } on auth.FirebaseAuthException catch (e) {
+      } on FirebaseAuthException catch (e) {
         setState(() {
           _errorMessage = e.message;
         });
@@ -91,6 +89,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // Email
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(
@@ -101,6 +100,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
+
+              // Username
               TextFormField(
                 controller: _usernameController,
                 decoration: const InputDecoration(
@@ -110,6 +111,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 validator: FormValidator.validateFullName,
               ),
               const SizedBox(height: 16),
+
+              // Password
               TextFormField(
                 controller: _passwordController,
                 decoration: const InputDecoration(
@@ -120,6 +123,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 obscureText: true,
               ),
               const SizedBox(height: 16),
+
+              // Confirm Password
               TextFormField(
                 controller: _confirmPasswordController,
                 decoration: const InputDecoration(

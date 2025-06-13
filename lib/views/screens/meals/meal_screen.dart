@@ -41,7 +41,10 @@ class _MealScreenState extends State<MealScreen> {
               if (newMeal != null) {
                 await controller.addMeal(newMeal);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Đã thêm ${newMeal.title}')),
+                  SnackBar(
+                    content: Text('Đã thêm món ăn mới: ${newMeal.title}'),
+                    backgroundColor: AppColors.success,
+                  ),
                 );
               }
             },
@@ -50,7 +53,6 @@ class _MealScreenState extends State<MealScreen> {
       ),
       body: Column(
         children: [
-          // Navigator
           Container(
             color: Colors.grey[200],
             child: Row(
@@ -99,6 +101,7 @@ class _MealScreenState extends State<MealScreen> {
                   }).toList(),
             ),
           ),
+
           // List Meal
           Expanded(
             child: StreamBuilder<List<Meal>>(
@@ -108,7 +111,7 @@ class _MealScreenState extends State<MealScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
-                  return Center(child: Text('Co lỗi xay ra'));
+                  return Center(child: Text('Có lỗi xảy ra'));
                 }
                 final dishs = snapshot.data ?? [];
                 return ListView.builder(
@@ -122,35 +125,41 @@ class _MealScreenState extends State<MealScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                      icon: const Icon(Icons.add, color: Colors.blue),
-                      onPressed: () async {
-                        await controller.addDishToDate(dish.id);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Đã thêm ${dish.title} vào ngày hôm nay',
-                                ),
-                                backgroundColor: AppColors.success,
-                              ),
-                            );
-                          }
-                      },
-                    ),
+                            icon: const Icon(Icons.add, color: Colors.blue),
+                            onPressed: () async {
+                              await controller.addDishToDate(dish.id);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Đã ăn "${dish.title}" vào ngày hôm nay',
+                                    ),
+                                    backgroundColor: AppColors.success,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
                           IconButton(
                             icon: const Icon(Icons.edit, color: Colors.blue),
                             onPressed: () async {
                               final updatedMeal = await Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => ManageMealScreen(meal: dish),
+                                  builder:
+                                      (context) => ManageMealScreen(meal: dish),
                                 ),
                               );
                               if (updatedMeal != null) {
-                                await controller.updateMeal(updatedMeal); 
+                                await controller.updateMeal(updatedMeal);
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Đã cập nhật ${updatedMeal.title}')),
+                                    SnackBar(
+                                      content: Text(
+                                        'Đã cập nhật món ăn: ${updatedMeal.title}',
+                                      ),
+                                      backgroundColor: AppColors.success,
+                                    ),
                                   );
                                 }
                               }
@@ -162,16 +171,22 @@ class _MealScreenState extends State<MealScreen> {
                               await controller.deleteMeal(dish.id);
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Đã xóa ${dish.title}')),
+                                  SnackBar(
+                                    content: Text('Đã xóa món ăn: ${dish.title}'),
+                                    backgroundColor: AppColors.success,
+                                  ),
                                 );
                               }
                             },
                           ),
-                        ]
+                        ],
                       ),
-                      onTap: (){
-                        Navigator.push(context,
-                          MaterialPageRoute(builder: (context) => MealDetailScreen(meal: dish) ) 
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => MealDetailScreen(meal: dish),
+                          ),
                         );
                       },
                     );

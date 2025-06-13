@@ -1,3 +1,4 @@
+import 'package:daily_calo/utils/app_color.dart';
 import 'package:flutter/material.dart';
 import 'package:daily_calo/models/user.dart';
 import 'package:daily_calo/services/user_service.dart';
@@ -43,11 +44,11 @@ class _ChangeInforScreenState extends State<ChangeInforScreen> {
 
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Lưu thông tin thành công')));
+      ).showSnackBar(const SnackBar(content: Text('Lưu thông tin thành công'),backgroundColor: AppColors.success,));
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+      ).showSnackBar(SnackBar(content: Text('Lỗi: $e'), backgroundColor: AppColors.success,));
     }
   }
 
@@ -55,7 +56,7 @@ class _ChangeInforScreenState extends State<ChangeInforScreen> {
     if (_newPasswordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Mật khẩu mới không khớp')));
+      ).showSnackBar(const SnackBar(content: Text('Mật khẩu mới không khớp'), backgroundColor: AppColors.error,));
       return;
     }
 
@@ -67,7 +68,7 @@ class _ChangeInforScreenState extends State<ChangeInforScreen> {
 
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Đổi mật khẩu thành công')));
+      ).showSnackBar(const SnackBar(content: Text('Đổi mật khẩu thành công'), backgroundColor: AppColors.success,));
 
       _oldPasswordController.clear();
       _newPasswordController.clear();
@@ -75,7 +76,7 @@ class _ChangeInforScreenState extends State<ChangeInforScreen> {
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+      ).showSnackBar(SnackBar(content: Text('Lỗi: $e'), backgroundColor: AppColors.error,));
     }
   }
 

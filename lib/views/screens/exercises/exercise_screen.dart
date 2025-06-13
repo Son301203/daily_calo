@@ -27,7 +27,6 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
           IconButton(
             icon: const Icon(Icons.add, color: AppColors.whiteText),
             onPressed: () async {
-              // Show AlertDialog for adding a new exercise
               final newExercise = await showDialog<Exercise>(
                 context: context,
                 builder: (context) => const ManageExerciseScreen(),
@@ -36,7 +35,9 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                 await controller.addEx(newExercise);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Đã thêm ${newExercise.activity}'),
+                    content: Text(
+                      'Đã thêm bài tập luyện mới: ${newExercise.activity}',
+                    ),
                     backgroundColor: AppColors.success,
                   ),
                 );
@@ -56,7 +57,7 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
           }
           final exercises = snapshot.data ?? [];
           if (exercises.isEmpty) {
-            return const Center(child: Text('Chưa có bài tập nào'));
+            return const Center(child: Text('Chưa có bài tập luyện nào'));
           }
           return ListView.builder(
             itemCount: exercises.length,
@@ -71,23 +72,22 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                     IconButton(
                       icon: const Icon(Icons.add, color: Colors.blue),
                       onPressed: () async {
-                        await controller.addExerciseIdToDate(exercise.id);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Đã thêm ${exercise.activity} vào ngày hôm nay',
-                                ),
-                                backgroundColor: AppColors.success,
+                        await controller.addExerciseToDate(exercise.id);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Đã thực hiện "${exercise.activity}" vào ngày hôm nay',
                               ),
-                            );
-                          }
+                              backgroundColor: AppColors.success,
+                            ),
+                          );
+                        }
                       },
                     ),
                     IconButton(
                       icon: const Icon(Icons.edit, color: Colors.blue),
                       onPressed: () async {
-                        // Show AlertDialog for editing the exercise
                         final updatedExercise = await showDialog<Exercise>(
                           context: context,
                           builder:
@@ -99,7 +99,7 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                'Đã cập nhật ${updatedExercise.activity}',
+                                'Đã cập nhật bài tập luyện: ${updatedExercise.activity}',
                               ),
                               backgroundColor: AppColors.success,
                             ),
@@ -114,7 +114,9 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Đã xóa ${exercise.activity}'),
+                              content: Text(
+                                'Đã xóa bài tập luyện: ${exercise.activity}',
+                              ),
                               backgroundColor: AppColors.success,
                             ),
                           );

@@ -23,7 +23,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = ProfileController(); // lấy singleton
+    _controller = ProfileController();
     _loadProfile();
   }
 
@@ -257,7 +257,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: () {
               _controller.signOut();
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đăng xuất thành công')),
+                const SnackBar(content: Text('Đăng xuất thành công'), backgroundColor: AppColors.success),
               );
               Navigator.of(context).pushReplacementNamed(AppRoutes.login);
             },

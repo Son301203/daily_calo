@@ -5,6 +5,7 @@ import 'package:daily_calo/models/health.dart';
 import 'package:daily_calo/models/exercise.dart';
 import 'package:daily_calo/models/meal.dart';
 import 'package:daily_calo/services/water_service.dart';
+import 'package:daily_calo/utils/app_color.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -15,7 +16,6 @@ class HomeController {
   late DateTime _today;
   late int _caloriesNeeded;
   late int _baseCaloriesNeeded;
-  late int _weightGoal;
   late double _currentWeight;
   late double _previousWeight;
   late DateTime _previousWeightDate;
@@ -55,7 +55,6 @@ class HomeController {
     _today = data['today'];
     _caloriesNeeded = 0;
     _waterService.loadWaterData();
-    _weightGoal = data['weightGoal'];
     _currentWeight = data['currentWeight'];
     _previousWeight = data['previousWeight'];
     _previousWeightDate = data['previousWeightDate'];
@@ -102,8 +101,8 @@ class HomeController {
     if (_userId == null) return;
     final combinedStream =
         StreamGroup.merge([
-          getTotalCaloriesBurned(_userId!).map((burned) => {'burned': burned}),
-          getTotalCaloriesIntake(_userId!).map((intake) => {'intake': intake}),
+          getTotalCaloriesBurned(_userId).map((burned) => {'burned': burned}),
+          getTotalCaloriesIntake(_userId).map((intake) => {'intake': intake}),
         ]).asBroadcastStream();
 
     int latestBurned = 0;
@@ -168,14 +167,11 @@ class HomeController {
           _baseCaloriesNeeded - totalIntake + totalBurned;
       _caloriesNeeded = calculatedCaloriesNeeded;
 
-      // Update Firestore if necessary
+      // Update Firestore
       if (doc['caloriesNeeded']?.toInt() != calculatedCaloriesNeeded) {
         await _saveCaloriesNeededDaily(date, _caloriesNeeded);
       }
     } else {
-      // For new or future dates, reset to base calories
-      final now = DateTime.now();
-      final isFutureDate = date.isAfter(DateTime(now.year, now.month, now.day));
       _caloriesNeeded = _baseCaloriesNeeded;
       await dateCollection.add({
         'date': currentDate,
@@ -226,7 +222,6 @@ class HomeController {
   int get waterGoal => _waterService.waterGoal;
   int get waterIntake => _waterService.waterIntake;
   int get caloriesNeeded => _caloriesNeeded;
-  int get weightGoal => _weightGoal;
   double get currentWeight => _currentWeight;
   double get previousWeight => _previousWeight;
   DateTime get previousWeightDate => _previousWeightDate;
@@ -290,7 +285,6 @@ void setDate(DateTime date) async {
   _formattedDate = DateFormat('d \'th\' M').format(_today);
   _dynamicHeader = _service.getDynamicHeader(_today);
   await _getCaloriesNeededDaily(_today);
-  // Thêm dòng này để load lại lượng nước theo ngày mới
   await _waterService.loadWaterData(date: _today);
   onDateChanged?.call(_today);
 }
@@ -340,6 +334,7 @@ void setDate(DateTime date) async {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Vui lòng nhập cân nặng hợp lệ'),
+                        backgroundColor: AppColors.error,
                       ),
                     );
                   }

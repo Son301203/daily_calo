@@ -45,7 +45,10 @@ class _HomeScreenState extends State<HomeScreen>
     if (userId == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Vui lòng đăng nhập để tiếp tục')),
+          const SnackBar(
+            content: Text('Vui lòng đăng nhập để tiếp tục'),
+            backgroundColor: AppColors.error,
+          ),
         );
       });
     }
@@ -153,7 +156,7 @@ class HomeScreenContent extends StatelessWidget {
               _buildHeader(context),
               _buildCalorieCircle(context, userId),
               _buildWaterIntake(context),
-              _buildWeightGoal(context),
+              _buildWeightChangeHistory(context),
               _buildMealList(context, userId),
               _buildExerciseList(context, userId),
             ],
@@ -390,7 +393,10 @@ class HomeScreenContent extends StatelessWidget {
                   (context as Element).markNeedsBuild();
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Lỗi khi thêm nước: $e')),
+                    SnackBar(
+                      content: Text('Lỗi khi thêm nước: $e'),
+                      backgroundColor: AppColors.error,
+                    ),
                   );
                 }
               }
@@ -403,7 +409,10 @@ class HomeScreenContent extends StatelessWidget {
                   (context as Element).markNeedsBuild();
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Lỗi khi giảm nước: $e')),
+                    SnackBar(
+                      content: Text('Lỗi khi giảm nước: $e'),
+                      backgroundColor: AppColors.error,
+                    ),
                   );
                 }
               }
@@ -448,7 +457,7 @@ class HomeScreenContent extends StatelessWidget {
     );
   }
 
-  Widget _buildWeightGoal(BuildContext context) {
+  Widget _buildWeightChangeHistory(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -457,21 +466,7 @@ class HomeScreenContent extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Mục tiêu', style: Theme.of(context).bodyText),
-              Text(
-                '${controller.weightGoal} kg',
-                style: Theme.of(context).bodyText.copyWith(color: Colors.blue),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Cân nặng',
-                style: Theme.of(context).smallText.copyWith(fontSize: 16),
-              ),
+              Text('Cân nặng', style: Theme.of(context).bodyText),
               Container(
                 decoration: const BoxDecoration(
                   color: Colors.white,
@@ -544,6 +539,7 @@ class HomeScreenContent extends StatelessWidget {
     );
   }
 
+  //Exercise list daily
   Widget _buildExerciseList(BuildContext context, String userId) {
     return StreamBuilder<List<Exercise>>(
       stream: controller.getExercisesForCurrentDate(userId),
@@ -590,6 +586,7 @@ class HomeScreenContent extends StatelessWidget {
     );
   }
 
+  //Meal list daily
   Widget _buildMealList(BuildContext context, String userId) {
     return StreamBuilder<List<Meal>>(
       stream: controller.getMealForCurrentDate(userId),

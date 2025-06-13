@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:daily_calo/models/exercise.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class ExerciseController {
@@ -16,6 +15,7 @@ class ExerciseController {
     return auth.currentUser?.uid;
   }
 
+  // Add Exercise
   Future<void> addEx(Exercise ex) async {
     final userId = getCurrentUserId();
 
@@ -27,20 +27,12 @@ class ExerciseController {
     await exCollection.doc(ex.id).update(ex.toMap());
   }
 
-  // delete
+  // Delete
   Future<void> deleteEx(String exId) async {
     await exCollection.doc(exId).delete();
   }
 
-  //Get
-  Future<Exercise?> getEx(String exId) async {
-    final doc = await exCollection.doc(exId).get();
-    if (doc.exists) {
-      return Exercise.fromMap(doc.id, doc.data() as Map<String, dynamic>);
-    }
-    return null;
-  }
-
+  // Get
   Stream<List<Exercise>> getExercises() {
     final userId = getCurrentUserId();
     return exCollection
@@ -59,7 +51,7 @@ class ExerciseController {
         );
   }
 
-  Future<void> addExerciseIdToDate(String exerciseId) async {
+  Future<void> addExerciseToDate(String exerciseId) async {
     final userId = getCurrentUserId();
     final currentDate = DateFormat('dd/MM/yy').format(DateTime.now());
     final dateCollection = usersCollection.doc(userId).collection('Date');
@@ -78,7 +70,6 @@ class ExerciseController {
       currentExercise.add(exerciseId);
       await dateCollection.doc(docId).update({'exercise_id': currentExercise});
     } else {
-      // Document doesn't exist, create a new one
       await dateCollection.add({
         'date': currentDate,
         'caloriesNeeded': 0,

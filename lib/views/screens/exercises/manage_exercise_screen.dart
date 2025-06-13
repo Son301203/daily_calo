@@ -50,7 +50,7 @@ class _ManageExerciseScreenState extends State<ManageExerciseScreen> {
     final isEditMode = widget.exercise != null;
     return AlertDialog(
       title: Text(
-        isEditMode ? 'Chỉnh sửa bài luyện tập' : 'Thêm bài luyện tập',
+        isEditMode ? 'Chỉnh sửa bài tập luyện' : 'Thêm bài tập luyện',
         style: const TextStyle(color: AppColors.lightText),
       ),
       content: Form(
@@ -60,6 +60,7 @@ class _ManageExerciseScreenState extends State<ManageExerciseScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox(height: 16),
+              // Activity
               TextFormField(
                 controller: _activityController,
                 decoration: _inputDecoration(
@@ -73,6 +74,8 @@ class _ManageExerciseScreenState extends State<ManageExerciseScreen> {
                             : null,
               ),
               const SizedBox(height: 12),
+
+              // kcal
               TextFormField(
                 controller: _kcalController,
                 decoration: _inputDecoration(
@@ -91,6 +94,8 @@ class _ManageExerciseScreenState extends State<ManageExerciseScreen> {
                 },
               ),
               const SizedBox(height: 12),
+
+              // Time
               TextFormField(
                 controller: _timeController,
                 decoration: _inputDecoration(
@@ -114,7 +119,7 @@ class _ManageExerciseScreenState extends State<ManageExerciseScreen> {
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.save, color: AppColors.whiteText),
                   label: Text(
-                    isEditMode ? 'Lưu chỉnh sửa' : 'Thêm bài luyện tập',
+                    isEditMode ? 'Lưu chỉnh sửa' : 'Thêm bài tập luyện mới',
                     style: const TextStyle(
                       fontSize: 16,
                       color: AppColors.whiteText,
